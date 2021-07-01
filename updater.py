@@ -15,6 +15,7 @@ import pathlib
 import zipfile
 import py7zr
 import time
+import subprocess
 
 
 # Helpers functions
@@ -83,14 +84,17 @@ def handle_updates(update_list, force_download, no_repack, no_clean):
 
 
 def update_tool(name, force_download, no_repack, no_clean):
+    # execute custom pre update script
+    exec_update_script(name, False)
+
     # generate download url
     from_url = config.get(name, 'from')
-    download_url = config.get(name, 'url')
+    web_url = config.get(name, 'url')
     if from_url == 'github':
-        download_url = '{0}/releases/latest'.format(download_url)
+        web_url = '{0}/releases/latest'.format(web_url)
 
     # load html
-    html_response = requests.get(download_url)
+    html_response = requests.get(web_url)
     html_response.raise_for_status()
 
     # regex shit
@@ -112,11 +116,9 @@ def update_tool(name, force_download, no_repack, no_clean):
     unpack(download_file_path, file_info[1], unpack_path, update_file_pass)
     repack(name, unpack_path, latest_version, no_repack, no_clean)
 
-    # update local version data
-    config.set(name, 'local_version', latest_version)
-    with open('tools.ini', 'w') as configfile:
-        config.write(configfile)
-
+    # update complete
+    bump_version(name, latest_version)
+    exec_update_script(name, True)
     print('{0}: update complete'.format(name))
 
 
@@ -197,6 +199,20 @@ def repack(name, unpack_path, version, no_repack, no_clean):
         shutil.copy(tmp_tool_path, tool_folder_path)
 
 
+def bump_version(name, latest_version):
+    config.set(name, 'local_version', latest_version)
+    with open('tools.ini', 'w') as configfile:
+        config.write(configfile)
+
+
+def exec_update_script(name, is_post):
+    script_type = 'post_update_script' if is_post else 'pre_update_script'
+    script = config.get(name, script_type, fallback=None)
+    if script:
+        print('{0}: exec {1} "{2}"'.format(name, script_type, script))
+        subprocess.run(script)
+
+
 # Implementation
 def print_banner():
     print("""
@@ -217,7 +233,7 @@ def init_argparse():
         "-v",
         "--version",
         action="version",
-        version="version 1.1.0-master"
+        version="version 1.2.0-master"
     )
     parser.add_argument(
         "-u",
