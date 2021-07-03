@@ -70,7 +70,7 @@ def unpack(file_path, file_ext, unpack_path, file_pass):
 
 # Steps
 def handle_updates(update_list, force_download, no_repack, no_clean):
-    # create folder if dont exist
+    # create updates folder if dont exist
     if not os.path.exists(updates_path):
         os.mkdir(updates_path)
 
@@ -172,31 +172,35 @@ def get_download_url(name, html, from_url):
 
 
 def repack(name, unpack_path, version, no_repack, no_clean):
-    # prepare
-    tool_folder_name = config.get(name, 'folder')
-    tool_folder_path = os.path.join(os.path.dirname(current_path), tool_folder_name)
-    pathlib.Path(tool_folder_path).mkdir(parents=True, exist_ok=True)
-
-    tool_name = '{0} - {1}.7z'.format(name, version)
-    tmp_tool_path = os.path.join(os.path.dirname(unpack_path), tool_name)
+    tool_unpack_path = unpack_path
 
     # dirty hack for correct folders structure
-    folder_list = os.listdir(unpack_path)
-    folder_sample = os.path.join(unpack_path, folder_list[0])
+    folder_list = os.listdir(tool_unpack_path)
+    folder_sample = os.path.join(tool_unpack_path, folder_list[0])
     if len(folder_list) == 1 & os.path.isdir(folder_sample):
-        unpack_path = folder_sample
+        tool_unpack_path = folder_sample
 
     # update tool
+    tool_folder = config.get(name, 'folder')
+    if not pathlib.Path(tool_folder).is_absolute():
+        tool_folder = os.path.join(current_path, tool_folder)
+
+    print('{0}: saved to {1}'.format(name, tool_folder))
+    pathlib.Path(tool_folder).mkdir(parents=True, exist_ok=True)
+
     if not no_clean:
-        cleanup_folder(tool_folder_path)
+        cleanup_folder(tool_folder)
 
     if no_repack:
-        shutil.copytree(unpack_path, tool_folder_path, copy_function=shutil.copy, dirs_exist_ok=True)
+        shutil.copytree(tool_unpack_path, tool_folder, copy_function=shutil.copy, dirs_exist_ok=True)
     else:
-        with py7zr.SevenZipFile(tmp_tool_path, 'w') as archive:
-            archive.writeall(unpack_path, arcname='')
+        tool_name = '{0} - {1}.7z'.format(name, version)
+        tool_repack_path = os.path.join(os.path.dirname(unpack_path), tool_name)
 
-        shutil.copy(tmp_tool_path, tool_folder_path)
+        with py7zr.SevenZipFile(tool_repack_path, 'w') as archive:
+            archive.writeall(tool_unpack_path, arcname='')
+
+        shutil.copy(tool_repack_path, tool_folder)
 
 
 def bump_version(name, latest_version):
