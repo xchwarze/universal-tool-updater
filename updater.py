@@ -141,30 +141,26 @@ def check_version(name, html, force_download):
 
 
 def get_download_url(name, html, from_url):
-    # case 1: if update_url is set... download it!
     update_download_url = config.get(name, 'update_url', fallback=None)
     re_download = config.get(name, 're_download', fallback=None)
 
-    # case 2: if update_url is not set, scrape the link from html (ex: nirsoft)
-    if not update_download_url:
+    # fix github url
+    if from_url == 'github':
+        update_download_url = 'https://github.com'
+
+    # case 2: if update_url is not set, scrape the link from html
+    if re_download:
         html_regex_download = re.findall(re_download, html)
         if not html_regex_download:
             raise Exception('{0}: re_download not match'.format(name))
 
-        # fix github url
-        update_download_url = html_regex_download[0]
-        if from_url == 'github':
-            update_download_url = 'https://github.com{0}'.format(update_download_url)
+        # case 3: if update_url and re_download is set.... generate download link
+        if update_download_url:
+            update_download_url = '{0}{1}'.format(update_download_url, html_regex_download[0])
+        else:
+            update_download_url = html_regex_download[0]
 
-    # case 3: if update_url and re_download is set.... generate download link (ex: sourceforge)
-    # anyway sourceforge response real download url when 302 redirect loop end
-    elif re_download:
-        html_regex_download = re.findall(re_download, html)
-        if not html_regex_download:
-            raise Exception('{0}: re_download not match'.format(name))
-
-        update_download_url = '{0}{1}'.format(update_download_url, html_regex_download[0])
-
+    # case 1: if update_url is set... download it!
     if not update_download_url:
         raise Exception('{0}: update_download_url not generated!'.format(name))
 
