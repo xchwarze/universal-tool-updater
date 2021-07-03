@@ -233,7 +233,7 @@ def init_argparse():
         "-v",
         "--version",
         action="version",
-        version="version 1.2.0-master"
+        version="version 1.3.0"
     )
     parser.add_argument(
         "-u",
