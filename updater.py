@@ -88,7 +88,7 @@ def update_tool(name, force_download, no_repack, no_clean):
     exec_update_script(name, False)
 
     # generate download url
-    from_url = config.get(name, 'from')
+    from_url = config.get(name, 'from', fallback='web')
     web_url = config.get(name, 'url')
     if from_url == 'github':
         web_url = '{0}/releases/latest'.format(web_url)
@@ -125,7 +125,7 @@ def update_tool(name, force_download, no_repack, no_clean):
 def check_version(name, html, force_download):
     # https://api.github.com/repos/horsicq/DIE-engine/releases/latest
     # python -c 'import json,sys;obj=json.load(sys.stdin);print obj["assets"][0]["browser_download_url"];'
-    local_version = config.get(name, 'local_version')
+    local_version = config.get(name, 'local_version', fallback='0')
     re_version = config.get(name, 're_version')
     html_regex_version = re.findall(re_version, html)
 
