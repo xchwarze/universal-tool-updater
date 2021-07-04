@@ -224,6 +224,7 @@ def print_banner():
 /___/_/ /_/\__,_/\___/\__/\___/\___/\__/\__,_/_.___/_/\___/____/  
 
 Universal Tool Updater - by DSR!
+https://github.com/xchwarze/universal-tool-updater
 """)
 
 def init_argparse():
