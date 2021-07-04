@@ -74,3 +74,23 @@ updater.exe --force --update DIE
 ```bash
 updater.exe --disable-folder-clean --disable-repack
 ```
+
+## Usar con tareas programadas
+
+* Agregar la herramienta como tarea programada. Puede leer más aquí
+"[Create scheduled tasks with CLI](https://www.windowscentral.com/how-create-task-using-task-scheduler-command-prompt)", 
+"[How to create an automated task](https://www.windowscentral.com/how-create-automated-task-using-task-scheduler-windows-10)" and 
+"[Prevent command window appearing](https://pureinfotech.com/prevent-command-window-appearing-scheduled-tasks-windows-10/)"
+
+
+```bash
+# execute in elevated command prompt
+SCHTASKS /CREATE /SC DAILY /TN "ToolkitUpdater" /TR "D:\code\toolkit\Updater\custom-task.bat" /ST 14:00
+```
+
+* Eliminar tarea programada
+
+```bash
+# execute in elevated command prompt
+SCHTASKS /DELETE /TN "ToolkitUpdater"
+```
