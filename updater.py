@@ -81,6 +81,7 @@ def handle_updates(update_list, force_download, no_repack, no_clean):
             print(exception)
 
     cleanup_folder(updates_path)
+    time.sleep(5)
 
 
 def update_tool(name, force_download, no_repack, no_clean):
@@ -282,7 +283,6 @@ def main():
         no_repack = args.disable_repack,
         no_clean = args.disable_folder_clean
     )
-    time.sleep(3)
 
 
 # se fini
