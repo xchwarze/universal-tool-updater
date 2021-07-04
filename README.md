@@ -1,8 +1,8 @@
 # Universal Tool Updater
 
-This tool is designed to remedy the tedious process of keeping the tools we use to work daily up to date.
+This tool is designed to help with the tedious process of keeping the tools that we use to work daily up to date.
 
-It is the inevitable complement to the [toolkit](https://github.com/indetectables-net/toolkit) of the site.
+This is the inevitable complement to the [toolkit](https://github.com/indetectables-net/toolkit) of the site.
 
 ![Image](https://i.imgur.com/o3vuUC5.png)
 
