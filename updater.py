@@ -132,7 +132,7 @@ def check_version(name, html, force_download):
     html_regex_version = re.findall(re_version, html)
 
     if not html_regex_version:
-        raise Exception('{0}: re_version not match'.format(name))
+        raise Exception('{0}: re_version regex not match'.format(name))
 
     if not force_download and local_version == html_regex_version[0]:
         raise Exception('{0}: {1} is the latest version'.format(name, local_version))
@@ -154,7 +154,7 @@ def get_download_url(name, html, from_url):
     if re_download:
         html_regex_download = re.findall(re_download, html)
         if not html_regex_download:
-            raise Exception('{0}: re_download not match'.format(name))
+            raise Exception('{0}: re_download regex not match'.format(name))
 
         # case 3: if update_url and re_download is set.... generate download link
         if update_download_url:
