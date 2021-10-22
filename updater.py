@@ -86,7 +86,7 @@ def handle_updates(update_list, force_download, no_repack, no_clean):
 
 def update_tool(name, force_download, no_repack, no_clean):
     # execute custom pre update script
-    exec_update_script(name, False)
+    exec_update_script(name, 'pre_update')
 
     # generate download url
     from_url = config.get(name, 'from', fallback='web')
@@ -115,11 +115,12 @@ def update_tool(name, force_download, no_repack, no_clean):
     update_file_pass = config.get(name, 'update_file_pass', fallback=None)
     unpack_path = os.path.join(updates_path, file_info[0])
     unpack(download_file_path, file_info[1], unpack_path, update_file_pass)
+    exec_update_script(name, 'post_unpack')
     repack(name, unpack_path, latest_version, no_repack, no_clean)
 
     # update complete
     bump_version(name, latest_version)
-    exec_update_script(name, True)
+    exec_update_script(name, 'post_update')
     print('{0}: update complete'.format(name))
 
 
@@ -206,8 +207,7 @@ def bump_version(name, latest_version):
         config.write(configfile)
 
 
-def exec_update_script(name, is_post):
-    script_type = 'post_update_script' if is_post else 'pre_update_script'
+def exec_update_script(name, script_type):
     script = config.get(name, script_type, fallback=None)
     if script:
         print('{0}: exec {1} "{2}"'.format(name, script_type, script))
