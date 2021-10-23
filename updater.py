@@ -232,37 +232,37 @@ def init_argparse():
         usage="%(prog)s [ARGUMENTS]",
     )
     parser.add_argument(
-        "-v",
-        "--version",
-        action="version",
-        version="version 1.4.0"
+        '-v',
+        '--version',
+        action='version',
+        version='version 1.4.0'
     )
     parser.add_argument(
-        "-u",
-        "--update",
+        '-u',
+        '--update',
         dest='update',
-        help="update tools (default: all)",
-        nargs="*"
+        help='update tools (default: all)',
+        nargs='*'
     )
     parser.add_argument(
-        "-dfc",
-        "--disable-folder-clean",
+        '-dfc',
+        '--disable-folder-clean',
         dest='disable_folder_clean',
-        help="disable tool folder clean (default: no_disable_folder_clean)",
+        help='disable tool folder clean (default: no_disable_folder_clean)',
         action=argparse.BooleanOptionalAction
     )
     parser.add_argument(
-        "-dr",
-        "--disable-repack",
+        '-dr',
+        '--disable-repack',
         dest='disable_repack',
-        help="disable tool repack (default: no_disable_repack)",
+        help='disable tool repack (default: no_disable_repack)',
         action=argparse.BooleanOptionalAction
     )
     parser.add_argument(
-        "-f",
-        "--force",
+        '-f',
+        '--force',
         dest='force',
-        help="force download (default: no_force)",
+        help='force download (default: no_force)',
         action=argparse.BooleanOptionalAction
     )
 
