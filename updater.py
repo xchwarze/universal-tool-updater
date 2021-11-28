@@ -26,15 +26,14 @@ def get_filename_from_url(url):
     if scheme_removed.find('/') == -1:
         return ''
 
-    return os.path.basename(scheme_removed)
+    return pathlib.Path(scheme_removed).name
 
 def cleanup_folder(path):
-    for file in os.listdir(path):
-        full_path = os.path.join(path, file)
-        if os.path.isdir(full_path):
-            shutil.rmtree(full_path)
+    for file in pathlib.Path(path).iterdir():
+        if file.is_dir():
+            shutil.rmtree(file)
         else:
-            os.remove(full_path)
+            file.unlink()
 
 def download(url, file_path):
     file_response = requests.get(url, allow_redirects=True, stream=True)
@@ -72,7 +71,7 @@ class Updater:
         self.no_repack = no_repack
         self.no_clean = no_clean
         self.script_path = os.fsdecode(os.getcwdb())
-        self.update_folder_path = os.path.join(self.script_path, 'updates')
+        self.update_folder_path = pathlib.Path(self.script_path).joinpath('updates')
 
     def _scrape_step(self):
         from_url = config.get(self.name, 'from', fallback='web')
@@ -92,12 +91,12 @@ class Updater:
 
     def _download_step(self, download_url):
         # create updates folder if dont exist
-        if not os.path.exists(self.update_folder_path):
-            os.mkdir(self.update_folder_path)
+        if not pathlib.Path.exists(self.update_folder_path):
+            pathlib.Path.mkdir(self.update_folder_path)
 
         # download
         file_name = get_filename_from_url(download_url)
-        file_path = os.path.join(self.update_folder_path, file_name)
+        file_path = pathlib.Path(self.update_folder_path).joinpath(file_name)
 
         print('{0}: downloading update "{1}"'.format(self.name, file_name))
         self.cleanup_update_folder()
@@ -106,13 +105,13 @@ class Updater:
         return file_path
 
     def _processing_step(self, file_path, download_version):
-        file_info = os.path.splitext(file_path)
-        update_folder = file_info[0]
-        file_ext = file_info[1]
+        file_ext = pathlib.Path(file_path).suffix
+        update_folder = str(file_path).replace(file_ext, '')
 
         update_file_pass = config.get(self.name, 'update_file_pass', fallback=None)
-        unpack_path = os.path.join(self.update_folder_path, update_folder)
+        unpack_path = pathlib.Path(self.update_folder_path).joinpath(update_folder)
         unpack(file_path, file_ext, unpack_path, update_file_pass)
+
         self._exec_update_script('post_unpack')
         self._repack(unpack_path, download_version)
 
@@ -164,14 +163,14 @@ class Updater:
 
         # dirty hack for correct folders structure
         folder_list = os.listdir(tool_unpack_path)
-        folder_sample = os.path.join(tool_unpack_path, folder_list[0])
+        folder_sample = pathlib.Path(tool_unpack_path).joinpath(folder_list[0])
         if len(folder_list) == 1 & os.path.isdir(folder_sample):
             tool_unpack_path = folder_sample
 
         # update tool
         tool_folder = config.get(self.name, 'folder')
         if not pathlib.Path(tool_folder).is_absolute():
-            tool_folder = os.path.join(self.script_path, tool_folder)
+            tool_folder = pathlib.Path.resolve( pathlib.Path(self.script_path).joinpath(tool_folder) )
 
         print('{0}: saved to {1}'.format(self.name, tool_folder))
         pathlib.Path(tool_folder).mkdir(parents=True, exist_ok=True)
@@ -183,7 +182,7 @@ class Updater:
             shutil.copytree(tool_unpack_path, tool_folder, copy_function=shutil.copy, dirs_exist_ok=True)
         else:
             tool_name = '{0} - {1}.7z'.format(self.name, version)
-            tool_repack_path = os.path.join(os.path.dirname(unpack_path), tool_name)
+            tool_repack_path = pathlib.Path( pathlib.Path(unpack_path).parent ).joinpath(tool_name)
 
             with py7zr.SevenZipFile(tool_repack_path, 'w') as archive:
                 archive.writeall(tool_unpack_path, arcname='')
