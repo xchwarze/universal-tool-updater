@@ -63,63 +63,20 @@ def unpack(file_path, file_ext, unpack_path, file_pass):
         shutil.copy(file_path, unpack_path)
 
 
-# main class
+# Main Updater class
 class Updater:
-    def __init__(self, force_download, no_repack, no_clean):
+    def __init__(self, config, force_download, no_repack, no_clean):
         self.name = ''
+        self.config = config
         self.force_download = force_download
         self.no_repack = no_repack
         self.no_clean = no_clean
         self.script_path = os.fsdecode(os.getcwdb())
         self.update_folder_path = pathlib.Path(self.script_path).joinpath('updates')
 
-    def _scrape_step(self):
-        from_url = config.get(self.name, 'from', fallback='web')
-        web_url = config.get(self.name, 'url')
-        if from_url == 'github':
-            web_url = '{0}/releases/latest'.format(web_url)
-
-        # load html
-        html_response = requests.get(web_url)
-        html_response.raise_for_status()
-
-        return {
-            # regex shit
-            'download_version': self._check_version(html_response.text),
-            'download_url': self._get_download_url(html_response.text, from_url),
-        }
-
-    def _download_step(self, download_url):
-        # create updates folder if dont exist
-        if not pathlib.Path.exists(self.update_folder_path):
-            pathlib.Path.mkdir(self.update_folder_path)
-
-        # download
-        file_name = get_filename_from_url(download_url)
-        file_path = pathlib.Path(self.update_folder_path).joinpath(file_name)
-
-        print('{0}: downloading update "{1}"'.format(self.name, file_name))
-        self.cleanup_update_folder()
-        download(download_url, file_path)
-
-        return file_path
-
-    def _processing_step(self, file_path, download_version):
-        file_ext = pathlib.Path(file_path).suffix
-        update_folder = str(file_path).replace(file_ext, '')
-
-        update_file_pass = config.get(self.name, 'update_file_pass', fallback=None)
-        unpack_path = pathlib.Path(self.update_folder_path).joinpath(update_folder)
-        unpack(file_path, file_ext, unpack_path, update_file_pass)
-
-        self._exec_update_script('post_unpack')
-        self._repack(unpack_path, download_version)
-
-    def _check_version(self, html):
-        # https://api.github.com/repos/horsicq/DIE-engine/releases/latest
-        # python -c 'import json,sys;obj=json.load(sys.stdin);print obj["assets"][0]["browser_download_url"];'
-        local_version = config.get(self.name, 'local_version', fallback='0')
-        re_version = config.get(self.name, 're_version')
+    def _check_version_from_web(self, html):
+        local_version = self.config.get(self.name, 'local_version', fallback='0')
+        re_version = self.config.get(self.name, 're_version')
         html_regex_version = re.findall(re_version, html)
 
         if not html_regex_version:
@@ -132,13 +89,9 @@ class Updater:
 
         return html_regex_version[0]
 
-    def _get_download_url(self, html, from_url):
-        update_url = config.get(self.name, 'update_url', fallback=None)
-        re_download = config.get(self.name, 're_download', fallback=None)
-
-        # fix github url
-        if from_url == 'github':
-            update_url = 'https://github.com'
+    def _get_download_url_from_web(self, html):
+        update_url = self.config.get(self.name, 'update_url', fallback=None)
+        re_download = self.config.get(self.name, 're_download', fallback=None)
 
         # case 2: if update_url is not set, scrape the link from html
         if re_download:
@@ -158,6 +111,62 @@ class Updater:
 
         return update_url
 
+    def _scrape_web(self):
+        web_url = self.config.get(self.name, 'url')
+
+        # load html
+        html_response = requests.get(web_url)
+        html_response.raise_for_status()
+
+        return {
+            # regex shit
+            'download_version': self._check_version_from_web(html_response.text),
+            'download_url': self._get_download_url_from_web(html_response.text),
+        }
+
+    def _check_version_from_github(self, json):
+        local_version = self.config.get(self.name, 'local_version', fallback='0')
+
+        if not self.force_download and local_version == json['tag_name']:
+            raise Exception('{0}: {1} is the latest version'.format(self.name, local_version))
+
+        print('{0}: updated from {1} --> {2}'.format(self.name, local_version, json['tag_name']))
+
+        return json['tag_name']
+
+    def _get_download_url_from_github(self, json):
+        re_download = self.config.get(self.name, 're_download', fallback=None)
+
+        if not re_download:
+            raise Exception('{0}: re_download regex not set'.format(self.name))
+
+        update_url = None
+        for attachment in json['assets']:
+            html_regex_download = re.findall(re_download, attachment['browser_download_url'])
+            if html_regex_download:
+                update_url = attachment['browser_download_url']
+                break
+
+        if not update_url:
+            raise Exception('{0}: re_download regex not match'.format(self.name))
+
+        return update_url
+
+    def _scrape_github(self):
+        repo_path = self.config.get(self.name, 'url')
+        web_url = 'https://api.github.com/repos/{0}/releases/latest'.format(repo_path)
+
+        # load json
+        html_response = requests.get(web_url)
+        html_response.raise_for_status()
+        json_response = html_response.json()
+
+        return {
+            # regex shit
+            'download_version': self._check_version_from_github(json_response),
+            'download_url': self._get_download_url_from_github(json_response),
+        }
+
     def _repack(self, unpack_path, version):
         tool_unpack_path = unpack_path
 
@@ -168,7 +177,7 @@ class Updater:
             tool_unpack_path = folder_sample
 
         # update tool
-        tool_folder = config.get(self.name, 'folder')
+        tool_folder = self.config.get(self.name, 'folder')
         if not pathlib.Path(tool_folder).is_absolute():
             tool_folder = pathlib.Path.resolve( pathlib.Path(self.script_path).joinpath(tool_folder) )
 
@@ -190,15 +199,50 @@ class Updater:
             shutil.copy(tool_repack_path, tool_folder)
 
     def _bump_version(self, latest_version):
-        config.set(self.name, 'local_version', latest_version)
+        self.config.set(self.name, 'local_version', latest_version)
         with open('tools.ini', 'w') as configfile:
-            config.write(configfile)
+            self.config.write(configfile)
 
     def _exec_update_script(self, script_type):
-        script = config.get(self.name, script_type, fallback=None)
+        script = self.config.get(self.name, script_type, fallback=None)
         if script:
             print('{0}: exec {1} "{2}"'.format(self.name, script_type, script))
+            print('------------------------------')
             subprocess.run(script)
+            print('------------------------------')
+
+    def _scrape_step(self):
+        from_url = self.config.get(self.name, 'from', fallback='web')
+        if from_url == 'github':
+            return self._scrape_github()
+
+        return self._scrape_web()
+
+    def _download_step(self, download_url):
+        # create updates folder if dont exist
+        if not pathlib.Path.exists(self.update_folder_path):
+            pathlib.Path.mkdir(self.update_folder_path)
+
+        # download
+        file_name = get_filename_from_url(download_url)
+        file_path = pathlib.Path(self.update_folder_path).joinpath(file_name)
+
+        print('{0}: downloading update "{1}"'.format(self.name, file_name))
+        self.cleanup_update_folder()
+        download(download_url, file_path)
+
+        return file_path
+
+    def _processing_step(self, file_path, download_version):
+        file_ext = pathlib.Path(file_path).suffix
+        update_folder = str(file_path).replace(file_ext, '')
+
+        update_file_pass = self.config.get(self.name, 'update_file_pass', fallback=None)
+        unpack_path = pathlib.Path(self.update_folder_path).joinpath(update_folder)
+        unpack(file_path, file_ext, unpack_path, update_file_pass)
+
+        self._exec_update_script('post_unpack')
+        self._repack(unpack_path, download_version)
 
     def update(self, name):
         self.name = name
@@ -219,95 +263,102 @@ class Updater:
         # update complete
         self._bump_version(scrape_data['download_version'])
         self._exec_update_script('post_update')
-        print('{0}: update complete'.format(self.name))
+        print('{0}: update complete\n'.format(self.name))
 
     def cleanup_update_folder(self):
         cleanup_folder(self.update_folder_path)
 
 
 # Implementation
-def print_banner():
-    print("""
-    ____          __     __            __        __    __         
-   /  _/___  ____/ /__  / /____  _____/ /_____ _/ /_  / /__  _____
-   / // __ \/ __  / _ \/ __/ _ \/ ___/ __/ __ `/ __ \/ / _ \/ ___/
- _/ // / / / /_/ /  __/ /_/  __/ /__/ /_/ /_/ / /_/ / /  __(__  ) 
-/___/_/ /_/\__,_/\___/\__/\___/\___/\__/\__,_/_.___/_/\___/____/  
+class Setup:
+    def __init__(self):
+        self.arguments = {}
+        self.config = configparser.ConfigParser()
 
-Universal Tool Updater - by DSR!
-https://github.com/xchwarze/universal-tool-updater
-""")
+    def print_banner(self):
+        print("""
+        ____          __     __            __        __    __         
+       /  _/___  ____/ /__  / /____  _____/ /_____ _/ /_  / /__  _____
+       / // __ \/ __  / _ \/ __/ _ \/ ___/ __/ __ `/ __ \/ / _ \/ ___/
+     _/ // / / / /_/ /  __/ /_/  __/ /__/ /_/ /_/ / /_/ / /  __(__  ) 
+    /___/_/ /_/\__,_/\___/\__/\___/\___/\__/\__,_/_.___/_/\___/____/  
+    
+    Universal Tool Updater - by DSR!
+    https://github.com/xchwarze/universal-tool-updater
+    """)
 
-def init_argparse():
-    parser = argparse.ArgumentParser(
-        usage='%(prog)s [ARGUMENTS]',
-    )
-    parser.add_argument(
-        '-v',
-        '--version',
-        action='version',
-        version='version 1.5.0'
-    )
-    parser.add_argument(
-        '-u',
-        '--update',
-        dest='update',
-        help='update tools (default: all)',
-        nargs='*'
-    )
-    parser.add_argument(
-        '-dfc',
-        '--disable-folder-clean',
-        dest='disable_folder_clean',
-        help='disable tool folder clean (default: no_disable_folder_clean)',
-        action=argparse.BooleanOptionalAction
-    )
-    parser.add_argument(
-        '-dr',
-        '--disable-repack',
-        dest='disable_repack',
-        help='disable tool repack (default: no_disable_repack)',
-        action=argparse.BooleanOptionalAction
-    )
-    parser.add_argument(
-        '-f',
-        '--force',
-        dest='force',
-        help='force download (default: no_force)',
-        action=argparse.BooleanOptionalAction
-    )
+    def init_argparse(self):
+        parser = argparse.ArgumentParser(
+            usage='%(prog)s [ARGUMENTS]',
+        )
+        parser.add_argument(
+            '-v',
+            '--version',
+            action='version',
+            version='version 1.5.0'
+        )
+        parser.add_argument(
+            '-u',
+            '--update',
+            dest='update',
+            help='update tools (default: all)',
+            nargs='*'
+        )
+        parser.add_argument(
+            '-dfc',
+            '--disable-folder-clean',
+            dest = 'disable_folder_clean',
+            help = 'disable tool folder clean (default: no_disable_folder_clean)',
+            action = argparse.BooleanOptionalAction,
+            default = False
+        )
+        parser.add_argument(
+            '-dr',
+            '--disable-repack',
+            dest = 'disable_repack',
+            help = 'disable tool repack (default: no_disable_repack)',
+            action = argparse.BooleanOptionalAction,
+            default = False
+        )
+        parser.add_argument(
+            '-f',
+            '--force',
+            dest = 'force',
+            help = 'force download (default: no_force)',
+            action = argparse.BooleanOptionalAction,
+            default = False
+        )
 
-    return parser
+        self.arguments = parser.parse_args()
 
-def handle_updates(update_list, force_download, no_repack, no_clean):
-    updater = Updater(force_download, no_repack, no_clean)
+    def handle_updates(self, update_list):
+        updater = Updater(
+            config = self.config,
+            force_download = self.arguments.force,
+            no_repack = self.arguments.disable_repack,
+            no_clean = self.arguments.disable_folder_clean
+        )
 
-    for ini_name in update_list:
-        try:
-            updater.update(ini_name)
-        except Exception as exception:
-            print(exception)
+        for ini_name in update_list:
+            try:
+                updater.update(ini_name)
+            except Exception as exception:
+                print(exception)
 
-    updater.cleanup_update_folder()
+        updater.cleanup_update_folder()
 
-def main():
-    print_banner()
+    def main(self):
+        self.print_banner()
+        self.config.read('tools.ini')
+        self.init_argparse()
 
-    parser = init_argparse()
-    args = parser.parse_args()
-    update_list = args.update
-    if not args.update:
-        update_list = config.sections()
+        update_list = self.arguments.update
+        if not self.arguments.update:
+            update_list = self.config.sections()
 
-    handle_updates(
-        update_list = update_list,
-        force_download = args.force,
-        no_repack = args.disable_repack,
-        no_clean = args.disable_folder_clean
-    )
-
+        self.handle_updates(
+            update_list = update_list,
+        )
 
 # se fini
-config = configparser.ConfigParser()
-config.read('tools.ini')
-main()
+Setup().main()
