@@ -23,10 +23,16 @@ By default, it is configured as an example so that the user quickly understands 
 ```ini
 [DIE]
 folder = Analysis\DIE
-url = https://github.com/horsicq/DIE-engine
+url = horsicq/DIE-engine
 from = github
-re_version = <span class="css-truncate-target" [^>]*>(.*?)</span>
-re_download = "(.*?/die_win64_portable_(?:\S+).zip)"
+re_download = die_win64_portable_(?:\S+).zip
+
+[x64dbg]
+folder = Dissasembler\x64dbg
+url = https://sourceforge.net/projects/x64dbg/files/
+update_url = https://sourceforge.net/projects/x64dbg/files/latest/download.zip
+from = web
+re_version = snapshot_(.*?).zip
 ```
 
 The values used for configuration are:
