@@ -295,7 +295,7 @@ class Setup:
             '-v',
             '--version',
             action='version',
-            version='version 1.5.0'
+            version='version 1.5.0-master'
         )
         parser.add_argument(
             '-u',
