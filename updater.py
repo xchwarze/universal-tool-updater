@@ -3,7 +3,7 @@
 # Copyright (C) 2021 DSR! <xchwarze@gmail.com>
 # Released under the terms of the MIT License
 # Developed for Python 3.6+
-# pip install requests py7zr
+# pip install requests py7zr rarfile
 
 import argparse
 import configparser
@@ -14,6 +14,7 @@ import shutil
 import pathlib
 import zipfile
 import py7zr
+import rarfile
 import subprocess
 
 
@@ -52,6 +53,10 @@ def unpack(file_path, file_ext, unpack_path, file_pass):
             file_pass = bytes(file_pass, 'utf-8')
 
         with zipfile.ZipFile(file_path, 'r') as compressed:
+            compressed.extractall(unpack_path, pwd=file_pass)
+
+    if file_ext == '.rar':
+        with rarfile.RarFile(file_path, 'r') as compressed:
             compressed.extractall(unpack_path, pwd=file_pass)
 
     elif file_ext == '.7z':
@@ -272,6 +277,7 @@ class Updater:
 # Implementation
 class Setup:
     def __init__(self):
+        self.version = '1.5.0-master'
         self.arguments = {}
         self.config = configparser.ConfigParser()
 
@@ -295,7 +301,7 @@ class Setup:
             '-v',
             '--version',
             action='version',
-            version='version 1.5.0-master'
+            version='Version: {0}'.format(self.version)
         )
         parser.add_argument(
             '-u',
@@ -359,6 +365,7 @@ class Setup:
         self.handle_updates(
             update_list = update_list,
         )
+
 
 # se fini
 Setup().main()
