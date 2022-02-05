@@ -27,12 +27,11 @@ url = horsicq/DIE-engine
 from = github
 re_download = die_win64_portable_(?:\S+).zip
 
-[x64dbg]
-folder = Dissasembler\x64dbg
-url = https://sourceforge.net/projects/x64dbg/files/
-update_url = https://sourceforge.net/projects/x64dbg/files/latest/download.zip
-from = web
-re_version = snapshot_(.*?).zip
+[Portmon]
+folder = Monitor\Portmon
+url = https://docs.microsoft.com/en-us/sysinternals/downloads/portmon
+update_url = https://download.sysinternals.com/files/PortMon.zip
+re_version = <h1 [^>]*>Portmon for Windows v(.*?)</h1>
 ```
 
 Los valores utilizados para la configuración son:
@@ -60,7 +59,7 @@ Combinando el uso de `update_url` y `re_download` se consiguen las siguientes es
 1. Usando solo `update_url` se descarga directamente sin ningún procesamiento extra.
 2. Usando solo `re_download` se obtiene el link de descarga en la web de `url`.
 3. Cuando se usan ambos parámetros se concatena el resultado de `re_download` con `update_url`.
-Esto es útil para arreglar los links de descarga de Github o Sourceforge.
+Esto es útil para arreglar los links de descarga de GitHub o Sourceforge.
 
 ## Ejemplos
 
@@ -82,6 +81,18 @@ updater.exe --force --update DIE
 
 ```bash
 updater.exe --disable-folder-clean --disable-repack
+```
+
+## Use with GitHub Api
+
+Las descargas de GitHub se realizan por defecto haciendo scrapeo de datos, pero para un funcionamiento mas robusto se aconseja hacerlo usando la api de GitHub.
+Para ello hay que seguir los siguientes pasos:
+
+1. Generar nuestro token desde https://github.com/settings/tokens haciendo clic en Generate new token. 
+2. Ejecutar el updater con los siguientes comandos
+
+```bash
+updater.exe --update-default-params --use-github-api your_github_token
 ```
 
 ## Usar con tareas programadas
