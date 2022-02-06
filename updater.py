@@ -20,6 +20,7 @@ import signal
 import sys
 import colorama
 import tqdm
+import urllib
 
 
 # Helpers functions
@@ -127,16 +128,22 @@ class Updater:
 
         return html_regex_version[0]
 
-    def _get_download_url_from_web(self, html, update_url, re_download):
+    def _get_download_url_from_web(self, html, html_url, update_url, re_download):
         # case 2: if update_url is not set, scrape the link from html
         if re_download:
             html_regex_download = re.findall(re_download, html)
             if not html_regex_download:
                 raise Exception(colorama.Fore.RED + '{0}: re_download regex not match'.format(self.name))
 
+            # check if valid url
+            download_url_parse = urllib.parse.urlparse(html_regex_download[0])
+
             # case 3: if update_url and re_download is set.... generate download link
             if update_url:
                 update_url = '{0}{1}'.format(update_url, html_regex_download[0])
+            elif download_url_parse.scheme == '':
+                html_url_parse_fix = urllib.parse.urlparse(html_url)
+                update_url = '{0}://{1}/{2}'.format(html_url_parse_fix.scheme, html_url_parse_fix.netloc, html_regex_download[0])
             else:
                 update_url = html_regex_download[0]
 
@@ -154,7 +161,7 @@ class Updater:
         # regex shit
         return {
             'download_version': self._check_version_from_web(html_response.text, re_version),
-            'download_url': self._get_download_url_from_web(html_response.text, update_url, re_download),
+            'download_url': self._get_download_url_from_web(html_response.text, url, update_url, re_download),
         }
 
     def _check_version_from_github(self, json):
@@ -276,10 +283,14 @@ class Updater:
             ])
 
     def _scrape_step(self):
-        tool_url = self.config.get(self.name, 'url')
+        tool_url = self.config.get(self.name, 'url', fallback=None)
         update_url = self.config.get(self.name, 'update_url', fallback=None)
         re_download = self.config.get(self.name, 're_download', fallback=None)
         re_version = self.config.get(self.name, 're_version', fallback=None)
+
+        # case for don't process "Updater" tool
+        if not tool_url:
+            raise Exception()
 
         from_url = self.config.get(self.name, 'from', fallback='web')
         if from_url == 'github':
@@ -338,7 +349,6 @@ class Updater:
 
         # processing file
         processing_info = self._processing_step(update_file_path, scrape_data['download_version'])
-        print(processing_info)
 
         # update complete
         self._bump_version(scrape_data['download_version'])
