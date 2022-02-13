@@ -102,7 +102,6 @@ updater.exe --update-default-params --use-github-api your_github_token
 "[How to create an automated task](https://www.windowscentral.com/how-create-automated-task-using-task-scheduler-windows-10)" and 
 "[Prevent command window appearing](https://pureinfotech.com/prevent-command-window-appearing-scheduled-tasks-windows-10/)"
 
-
 ```bash
 # execute in elevated command prompt
 SCHTASKS /CREATE /SC DAILY /TN "ToolkitUpdater" /TR "D:\code\toolkit\Updater\custom-task.bat" /ST 14:00
@@ -113,4 +112,10 @@ SCHTASKS /CREATE /SC DAILY /TN "ToolkitUpdater" /TR "D:\code\toolkit\Updater\cus
 ```bash
 # execute in elevated command prompt
 SCHTASKS /DELETE /TN "ToolkitUpdater"
+```
+
+## Compilar a exe
+
+```bash
+pyinstaller --onefile updater.py --icon=appicon.ico
 ```
