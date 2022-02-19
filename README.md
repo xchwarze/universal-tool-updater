@@ -1,10 +1,12 @@
+English | [Español](README.ES.md)
+
 # Universal Tool Updater
 
 This tool is designed to help with the tedious process of keeping the tools that we use to work daily up to date.
 
 This is the inevitable complement to the [toolkit](https://github.com/indetectables-net/toolkit) of the site.
 
-![Image](https://i.imgur.com/o3vuUC5.png)
+![](assets/demo.gif)
 
 ## Installation
 
