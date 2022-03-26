@@ -231,6 +231,18 @@ class Updater:
 
         return unpack_path
 
+    def _save(self, use_merge, tool_folder_path, tool_unpack_path):
+        if not self.disable_clean and not use_merge:
+            cleanup_folder(tool_folder_path)
+
+        shutil.copytree(tool_unpack_path, tool_folder_path, copy_function=shutil.copy, dirs_exist_ok=True)
+
+        return {
+            'tool_name': self.name,
+            'tool_folder': str(tool_folder_path),
+            'save_compress_name': '',
+        }
+
     def _repack_save_compress_name(self, name, version):
         pack_name = '{0} - {1}.7z'.format(name, version)
         if self.save_format_type == 'version':
@@ -240,42 +252,59 @@ class Updater:
 
         return pack_name
 
-    def _repack(self, unpack_path, version):
-        tool_unpack_path = unpack_path
+    def _repack_merge(self, tool_folder_path):
+        old_version = self.config.get(self.name, 'local_version', fallback=None)
+        if not old_version:
+            return False
 
+        old_compress_name = self._repack_save_compress_name(self.name, old_version)
+        old_tool_repack_path = pathlib.Path(pathlib.Path(tool_folder_path).parent).joinpath(old_compress_name)
+        if old_tool_repack_path.exists():
+            return False
+        # todo terminar esta verga
+
+    def _repack(self, use_merge, tool_folder_path, tool_unpack_path, unpack_folder_path, version):
+        if use_merge:
+            self._repack_merge(tool_folder_path)
+
+        # normal code
+        if not self.disable_clean:
+            cleanup_folder(tool_folder_path)
+
+        save_compress_name = self._repack_save_compress_name(self.name, version)
+        tool_repack_path = pathlib.Path(pathlib.Path(unpack_folder_path).parent).joinpath(save_compress_name)
+
+        with py7zr.SevenZipFile(tool_repack_path, 'w') as archive:
+            archive.writeall(tool_unpack_path, arcname='')
+
+        shutil.copy(tool_repack_path, tool_folder_path)
+
+        return {
+            'tool_name': self.name,
+            'tool_folder': str(tool_folder_path),
+            'save_compress_name': save_compress_name,
+        }
+
+    def _processing_tool(self, tool_unpack_path):
         # dirty hack for correct folders structure
         folder_list = os.listdir(tool_unpack_path)
         folder_sample = pathlib.Path(tool_unpack_path).joinpath(folder_list[0])
         if len(folder_list) == 1 & os.path.isdir(folder_sample):
             tool_unpack_path = folder_sample
 
-        # update tool
-        tool_folder = self.config.get(self.name, 'folder')
-        if not pathlib.Path(tool_folder).is_absolute():
-            tool_folder = pathlib.Path.resolve(pathlib.Path(self.script_path).joinpath(tool_folder))
+        # tool folder
+        tool_folder_path = self.config.get(self.name, 'folder')
+        if not pathlib.Path(tool_folder_path).is_absolute():
+            tool_folder_path = pathlib.Path.resolve(
+                pathlib.Path(self.script_path).joinpath(tool_folder_path)
+            )
 
-        print('{0}: saving to folder {1}'.format(self.name, tool_folder))
-        pathlib.Path(tool_folder).mkdir(parents=True, exist_ok=True)
-
-        if not self.disable_clean:
-            cleanup_folder(tool_folder)
-
-        if self.disable_repack:
-            save_compress_name = ''
-            shutil.copytree(tool_unpack_path, tool_folder, copy_function=shutil.copy, dirs_exist_ok=True)
-        else:
-            save_compress_name = self._repack_save_compress_name(self.name, version)
-            tool_repack_path = pathlib.Path(pathlib.Path(unpack_path).parent).joinpath(save_compress_name)
-
-            with py7zr.SevenZipFile(tool_repack_path, 'w') as archive:
-                archive.writeall(tool_unpack_path, arcname='')
-
-            shutil.copy(tool_repack_path, tool_folder)
+        print('{0}: saving to folder {1}'.format(self.name, tool_folder_path))
+        pathlib.Path(tool_folder_path).mkdir(parents=True, exist_ok=True)
 
         return {
-            'tool_name': self.name,
-            'tool_folder': str(tool_folder),
-            'save_compress_name': save_compress_name,
+            'folder_path': tool_folder_path,
+            'unpack_path': tool_unpack_path,
         }
 
     def _bump_version(self, latest_version):
@@ -343,10 +372,25 @@ class Updater:
         return file_path
 
     def _processing_step(self, file_path, download_version):
-        unpack_path = self._unpack(file_path)
+        unpack_folder_path = self._unpack(file_path)
         self._exec_update_script('post_unpack')
 
-        return self._repack(unpack_path, download_version)
+        use_merge = self.config.get(self.name, 'merge', fallback=None)
+        tool = self._processing_tool(unpack_folder_path)
+        if self.disable_repack:
+            return self._save(
+                use_merge=use_merge,
+                tool_folder_path=tool['folder_path'],
+                tool_unpack_path=tool['unpack_path'],
+            )
+        else:
+            return self._repack(
+                use_merge=use_merge,
+                tool_folder_path=tool['folder_path'],
+                tool_unpack_path=tool['unpack_path'],
+                unpack_folder_path=unpack_folder_path,
+                version=download_version,
+            )
 
     def update(self, name):
         self.name = name
@@ -376,7 +420,7 @@ class Updater:
 # Implementation
 class Setup:
     def __init__(self):
-        self.version = '1.5.2'
+        self.version = '1.6.0'
         self.arguments = {}
         self.config = configparser.ConfigParser()
         self.default_config = {}
@@ -522,9 +566,10 @@ class Setup:
         signal.signal(signal.SIGINT, self.exit_handler)
 
         # Fix current dir bug
-        current_dir = os.path.dirname(sys.argv[0])
-        if current_dir:
-            os.chdir(current_dir)
+        #current_dir = os.path.dirname(sys.argv[0])
+        #if current_dir:
+        #    os.chdir(current_dir)
+        os.chdir(os.getcwd())
 
         self.print_banner()
 
