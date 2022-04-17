@@ -576,11 +576,10 @@ class Setup:
         colorama.init(autoreset=True)
         signal.signal(signal.SIGINT, self.exit_handler)
 
-        # Fix current dir bug
-        #current_dir = os.path.dirname(sys.argv[0])
-        #if current_dir:
-        #    os.chdir(current_dir)
-        os.chdir(os.getcwd())
+        # Fix updates "FileNotFoundError" in exe build
+        current_dir = os.path.dirname(sys.argv[0])
+        if current_dir:
+            os.chdir(current_dir)
 
         self.print_banner()
 
