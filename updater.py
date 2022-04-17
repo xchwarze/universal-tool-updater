@@ -98,14 +98,17 @@ def save_config_to_file(config, config_file_name):
 
 # Main Updater class
 class Updater:
-    def __init__(self, config, config_file_name, force_download, disable_repack, disable_clean, disable_progress,
-                 save_format_type, use_github_api):
+    def __init__(
+            self, config, config_file_name, force_download, disable_repack, disable_clean,
+            disable_install_check, disable_progress, save_format_type, use_github_api,
+    ):
         self.name = ''
         self.config = config
         self.config_file_name = config_file_name
         self.force_download = force_download
         self.disable_repack = disable_repack
         self.disable_clean = disable_clean
+        self.disable_install_check = disable_install_check
         self.disable_progress = disable_progress
         self.save_format_type = save_format_type
         self.script_path = os.fsdecode(os.getcwdb())
@@ -297,6 +300,15 @@ class Updater:
             'save_compress_name': save_compress_name,
         }
 
+    def _tool_install_path(self):
+        tool_folder_path = self.config.get(self.name, 'folder')
+        if not pathlib.Path(tool_folder_path).is_absolute():
+            tool_folder_path = pathlib.Path.resolve(
+                pathlib.Path(self.script_path).joinpath(tool_folder_path)
+            )
+
+        return tool_folder_path
+
     def _processing_tool(self, tool_unpack_path):
         # dirty hack for correct folders structure
         folder_list = os.listdir(tool_unpack_path)
@@ -305,12 +317,7 @@ class Updater:
             tool_unpack_path = folder_sample
 
         # tool folder
-        tool_folder_path = self.config.get(self.name, 'folder')
-        if not pathlib.Path(tool_folder_path).is_absolute():
-            tool_folder_path = pathlib.Path.resolve(
-                pathlib.Path(self.script_path).joinpath(tool_folder_path)
-            )
-
+        tool_folder_path = self._tool_install_path()
         pathlib.Path(tool_folder_path).mkdir(parents=True, exist_ok=True)
 
         return {
@@ -403,8 +410,16 @@ class Updater:
                 version=download_version,
             )
 
+    def _check_tool_installed(self):
+        tool_folder_path = self._tool_install_path()
+        if not tool_folder_path.exists() and not self.disable_install_check:
+            raise Exception('{0}: The program was not found'.format(self.name))
+
     def update(self, name):
         self.name = name
+
+        # check if installed
+        self._check_tool_installed()
 
         # execute custom pre update script
         self._exec_update_script('pre_update')
@@ -494,6 +509,14 @@ class Setup:
             default=self.get_argparse_default('disable_repack', False)
         )
         parser.add_argument(
+            '-dic',
+            '--disable-install-check',
+            dest='disable_install_check',
+            help='disable tool install check (default: false)',
+            action=argparse.BooleanOptionalAction,
+            default=self.get_argparse_default('disable_install_check', False)
+        )
+        parser.add_argument(
             '-dpb',
             '--disable-progress-bar',
             dest='disable_progress',
@@ -541,6 +564,7 @@ class Setup:
 
         self.config.set('Updater', 'disable_clean', str(self.arguments.disable_clean))
         self.config.set('Updater', 'disable_repack', str(self.arguments.disable_repack))
+        self.config.set('Updater', 'disable_install_check', str(self.arguments.disable_install_check))
         self.config.set('Updater', 'disable_progress', str(self.arguments.disable_progress))
         self.config.set('Updater', 'save_format_type', self.arguments.save_format_type)
         self.config.set('Updater', 'use_github_api', self.arguments.use_github_api)
@@ -559,6 +583,7 @@ class Setup:
             force_download=self.arguments.force_download,
             disable_repack=self.arguments.disable_repack,
             disable_clean=self.arguments.disable_clean,
+            disable_install_check=self.arguments.disable_install_check,
             disable_progress=self.arguments.disable_progress,
             save_format_type=self.arguments.save_format_type,
             use_github_api=self.arguments.use_github_api,
