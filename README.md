@@ -38,19 +38,20 @@ re_version = <h1 [^>]*>Portmon for Windows v(.*?)</h1>
 
 The values used for configuration are:
 
-Name | Mandatory | Description
------ | ------ | -------------
-`folder` | `YES` | Folder where the tool will be saved. If it does not exist, it will be created.
-`url` | `YES` | Web that will be used to perform the checks with the regex.
-`from` | `NO` | Indicates the strategy used for the update. Currently supported values are: `web` or `github`.
-`local_version` | `NO` | Currently downloaded version. This value will be updated with each update.
-`re_version` | `NO` | Regex used to check for new versions on the web used in `url`.
-`re_download` | `NO` | Regex used to get the download link on the web used in `url`.
-`update_url` | `NO` | Update download URL. See "Strategy for download" for more info.
-`update_file_pass` | `NO` | Use this password to unzip the update.
-`pre_update` | `NO` | The entered script will be executed before the update process.
-`post_update` | `NO` | The entered script will be executed after the update process.
-`post_unpack` | `NO` | The entered script will be executed after unpack the update file.
+| Name               | Mandatory | Description                                                                                    |
+|--------------------|-----------|------------------------------------------------------------------------------------------------|
+| `folder`           | `YES`     | Folder where the tool will be saved. If it does not exist, it will be created.                 |
+| `url`              | `YES`     | Web that will be used to perform the checks with the regex.                                    |
+| `from`             | `NO`      | Indicates the strategy used for the update. Currently supported values are: `web` or `github`. |
+| `local_version`    | `NO`      | Currently downloaded version. This value will be updated with each update.                     |
+| `re_version`       | `NO`      | Regex used to check for new versions on the web used in `url`.                                 |
+| `re_download`      | `NO`      | Regex used to get the download link on the web used in `url`.                                  |
+| `update_url`       | `NO`      | Update download URL. See "Strategy for download" for more info.                                |
+| `update_file_pass` | `NO`      | Use this password to unzip the update.                                                         |
+| `merge`            | `NO`      | Merge new version with local.                                                                  |
+| `pre_update`       | `NO`      | The entered script will be executed before the update process.                                 |
+| `post_update`      | `NO`      | The entered script will be executed after the update process.                                  |
+| `post_unpack`      | `NO`      | The entered script will be executed after unpack the update file.                              |
 
 ## Strategy for download
 

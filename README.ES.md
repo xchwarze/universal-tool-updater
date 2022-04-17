@@ -38,21 +38,22 @@ re_version = <h1 [^>]*>Portmon for Windows v(.*?)</h1>
 
 Los valores utilizados para la configuración son:
 
-Nombre | Obligatorio | Descripción
------|------|-------------
-`folder` | `SI` | Carpeta donde se guardara la herramienta. Si no existe la misma se creara.
-`url` | `SI` | Web que se usara para realizar los chequeos con las regex.
-`from` | `NO` | Indica la estrategia usada para el update. Los valores admitidos por el momento son: `web` o `github`.
-`local_version` | `NO` | Versión descargada actualmente. Este valor se actualizara con cada update.
-`re_version` | `NO` | Regex usado para comprobar si hay nuevas versiones en la web de `url`.
-`re_download` | `NO` | Regex usado para obtener el link de descarga en la web de `url`.
-`update_url` | `NO` | URL de descarga del update. Ver estrategia usadas para la descarga.
-`update_file_pass` | `NO` | Usar esta contraseña para descomprimir el update.
-`pre_update_script` | `NO` | El script ingresado se ejecutara antes del proceso de update.
-`post_update_script` | `NO` | El script ingresado se ejecutara después del proceso de update.
-`pre_update` | `NO` | El script ingresado se ejecutara antes del proceso de update.
-`post_update` | `NO` | El script ingresado se ejecutara después del proceso de update.
-`post_unpack` | `NO` | El script ingresado se ejecutara después del proceso de unpack.
+| Nombre               | Obligatorio | Descripción                                                                                            |
+|----------------------|-------------|--------------------------------------------------------------------------------------------------------|
+| `folder`             | `SI`        | Carpeta donde se guardara la herramienta. Si no existe la misma se creara.                             |
+| `url`                | `SI`        | Web que se usara para realizar los chequeos con las regex.                                             |
+| `from`               | `NO`        | Indica la estrategia usada para el update. Los valores admitidos por el momento son: `web` o `github`. |
+| `local_version`      | `NO`        | Versión descargada actualmente. Este valor se actualizara con cada update.                             |
+| `re_version`         | `NO`        | Regex usado para comprobar si hay nuevas versiones en la web de `url`.                                 |
+| `re_download`        | `NO`        | Regex usado para obtener el link de descarga en la web de `url`.                                       |
+| `update_url`         | `NO`        | URL de descarga del update. Ver estrategia usadas para la descarga.                                    |
+| `update_file_pass`   | `NO`        | Usar esta contraseña para descomprimir el update.                                                      |
+| `merge`              | `NO`        | Fusionar versión nueva con la local.                                                                   |
+| `pre_update_script`  | `NO`        | El script ingresado se ejecutara antes del proceso de update.                                          |
+| `post_update_script` | `NO`        | El script ingresado se ejecutara después del proceso de update.                                        |
+| `pre_update`         | `NO`        | El script ingresado se ejecutara antes del proceso de update.                                          |
+| `post_update`        | `NO`        | El script ingresado se ejecutara después del proceso de update.                                        |
+| `post_unpack`        | `NO`        | El script ingresado se ejecutara después del proceso de unpack.                                        |
 
 ## Estrategia usadas para la descarga
 
