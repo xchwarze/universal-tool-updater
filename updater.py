@@ -496,7 +496,7 @@ class Setup:
             '-dfc',
             '--disable-folder-clean',
             dest='disable_clean',
-            help='disable tool folder clean (default: false)',
+            help='disable tool folder clean',
             action=argparse.BooleanOptionalAction,
             default=self.get_argparse_default('disable_clean', False)
         )
@@ -504,7 +504,7 @@ class Setup:
             '-dr',
             '--disable-repack',
             dest='disable_repack',
-            help='disable tool repack (default: false)',
+            help='disable tool repack',
             action=argparse.BooleanOptionalAction,
             default=self.get_argparse_default('disable_repack', False)
         )
@@ -512,7 +512,7 @@ class Setup:
             '-dic',
             '--disable-install-check',
             dest='disable_install_check',
-            help='disable tool install check (default: false)',
+            help='disable tool install check',
             action=argparse.BooleanOptionalAction,
             default=self.get_argparse_default('disable_install_check', False)
         )
@@ -520,7 +520,7 @@ class Setup:
             '-dpb',
             '--disable-progress-bar',
             dest='disable_progress',
-            help='disable download progress bar (default: false)',
+            help='disable download progress bar',
             action=argparse.BooleanOptionalAction,
             default=self.get_argparse_default('disable_progress', False)
         )
@@ -528,7 +528,7 @@ class Setup:
             '-sft',
             '--save-format-type',
             dest='save_format_type',
-            help='compress save format name (default: full)',
+            help='compress save format name',
             choices=['full', 'version', 'name'],
             default=self.get_argparse_default('save_format_type', 'full', False)
         )
@@ -536,7 +536,7 @@ class Setup:
             '-f',
             '--force',
             dest='force_download',
-            help='force download (default: false)',
+            help='force download',
             action=argparse.BooleanOptionalAction,
             default=False
         )
@@ -544,14 +544,14 @@ class Setup:
             '-uga',
             '--use-github-api',
             dest='use_github_api',
-            help='use github api with this token (default: false)',
+            help='use github api with this token',
             default=self.get_argparse_default('use_github_api', '', False)
         )
         parser.add_argument(
             '-udp',
             '--update-default-params',
             dest='update_default_params',
-            help='update default params (default: false)',
+            help='update default params',
             action=argparse.BooleanOptionalAction,
             default=False
         )
