@@ -232,6 +232,8 @@ class Updater:
         return unpack_path
 
     def _save(self, use_merge, tool_folder_path, tool_unpack_path):
+        print('{0}: saving to folder {1}'.format(self.name, tool_folder_path))
+
         if not self.disable_clean and not use_merge:
             cleanup_folder(tool_folder_path)
 
@@ -252,22 +254,32 @@ class Updater:
 
         return pack_name
 
-    def _repack_merge(self, tool_folder_path):
-        old_version = self.config.get(self.name, 'local_version', fallback=None)
-        if not old_version:
+    def _repack_merge(self, tool_folder_path, tool_unpack_path):
+        # checks and preparation
+        old_version = self.config.get(self.name, 'local_version', fallback='0')
+        old_compress_name = self._repack_save_compress_name(self.name, old_version)
+        old_tool_compress_path = tool_folder_path.joinpath(old_compress_name)
+        if not old_tool_compress_path.exists():
             return False
 
-        old_compress_name = self._repack_save_compress_name(self.name, old_version)
-        old_tool_repack_path = pathlib.Path(pathlib.Path(tool_folder_path).parent).joinpath(old_compress_name)
-        if old_tool_repack_path.exists():
-            return False
-        # todo terminar esta verga
+        print('{0}: merging with "{1}"'.format(self.name, old_compress_name))
+
+        # unpack old version
+        old_tool_unpack_folder = str(old_compress_name).replace('.7z', '')
+        old_tool_unpack_path = pathlib.Path(self.update_folder_path).joinpath(old_tool_unpack_folder)
+        unpack(old_tool_compress_path, '.7z', old_tool_unpack_path, None)
+
+        # merge
+        shutil.copytree(tool_unpack_path, old_tool_unpack_path, copy_function=shutil.copy, dirs_exist_ok=True)
+        shutil.rmtree(tool_unpack_path)
+        shutil.move(old_tool_unpack_path, tool_unpack_path, copy_function=shutil.copy)
 
     def _repack(self, use_merge, tool_folder_path, tool_unpack_path, unpack_folder_path, version):
         if use_merge:
-            self._repack_merge(tool_folder_path)
+            self._repack_merge(tool_folder_path, tool_unpack_path)
 
-        # normal code
+        print('{0}: saving to folder {1}'.format(self.name, tool_folder_path))
+
         if not self.disable_clean:
             cleanup_folder(tool_folder_path)
 
@@ -299,7 +311,6 @@ class Updater:
                 pathlib.Path(self.script_path).joinpath(tool_folder_path)
             )
 
-        print('{0}: saving to folder {1}'.format(self.name, tool_folder_path))
         pathlib.Path(tool_folder_path).mkdir(parents=True, exist_ok=True)
 
         return {
