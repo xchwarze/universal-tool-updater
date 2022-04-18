@@ -120,5 +120,6 @@ SCHTASKS /DELETE /TN "ToolkitUpdater"
 ## Compilar a exe
 
 ```bash
+pip install pyinstaller
 pyinstaller --onefile updater.py --icon=appicon.ico
 ```
