@@ -199,17 +199,34 @@ class Updater:
         if self.use_github_api:
             return self._scrape_github_api(repo_path, re_download)
 
-        #repo_url = 'https://github.com/{0}/releases/latest'.format(repo_path)
-        repo_url = 'https://github.com/{0}/releases.atom'.format(repo_path)
-        re_download = self.re_github_download.format(re_download)
+        headers = {'User-Agent': self.request_user_agent}
 
-        return self._scrape_web(repo_url, '', self.re_github_version, re_download)
+        # load html
+        version_url = 'https://github.com/{0}/releases.atom'.format(repo_path)
+        version_html_response = requests.get(version_url, headers=headers)
+        version_html_response.raise_for_status()
+
+        download_version = self._check_version_from_web(version_html_response.text, self.re_github_version)
+
+        # load second html
+        download_url = 'https://github.com/{0}/releases/expanded_assets/{1}'.format(repo_path, download_version)
+        download_html_response = requests.get(download_url, headers=headers)
+        download_html_response.raise_for_status()
+
+        re_download = self.re_github_download.format(re_download)
+        download_url = self._get_download_url_from_web(download_html_response.text, version_url, '', re_download)
+
+        return {
+            'download_version': download_version,
+            'download_url': download_url,
+        }
 
     def _scrape_github_api(self, repo_path, re_download):
         repo_url = 'https://api.github.com/repos/{0}/releases/latest'.format(repo_path)
 
         # load json
-        html_response = requests.get(repo_url, headers={'Authorization': f'token {self.use_github_api}'})
+        headers = {'Authorization': f'token {self.use_github_api}'}
+        html_response = requests.get(repo_url, headers=headers)
         html_response.raise_for_status()
         json_response = html_response.json()
 
