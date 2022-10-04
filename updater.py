@@ -466,7 +466,7 @@ class Updater:
 # Implementation
 class Setup:
     def __init__(self):
-        self.version = '1.6.1'
+        self.version = '1.7.0'
         self.arguments = {}
         self.config = configparser.ConfigParser()
         self.default_config = {}
