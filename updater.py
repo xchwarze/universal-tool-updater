@@ -21,6 +21,7 @@ import sys
 import colorama
 import tqdm
 import urllib
+import binascii
 
 
 # Helpers functions
@@ -248,10 +249,12 @@ class Updater:
 
         remote_version = None
         if 'last-modified' in headers:
-            remote_version = headers['last-modified']
+            input_bytes = headers['last-modified'].encode()
+            remote_version = str(binascii.crc32(input_bytes))
         elif 'content-length' in headers:
             print('{0}: using "content-length" as version number...'.format(self.name))
-            remote_version = headers['content-length']
+            input_bytes = headers['content-length'].encode()
+            remote_version = str(binascii.crc32(input_bytes))
         else:
             raise Exception(colorama.Fore.RED + '{0}: no header is found with which to determine if there is an update'.format(self.name))
 
