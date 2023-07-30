@@ -552,14 +552,6 @@ class Setup:
             nargs='*'
         )
         parser.add_argument(
-            '-dsu',
-            '--disable-self-update',
-            dest='disable_self_update',
-            help='disable self update of this script',
-            action=argparse.BooleanOptionalAction,
-            default=False
-        )
-        parser.add_argument(
             '-dfc',
             '--disable-folder-clean',
             dest='disable_clean',
