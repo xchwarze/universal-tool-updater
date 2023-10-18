@@ -21,9 +21,11 @@ class UpdateManager:
         """
         self.version = '2.0.0'
         self.config_file_name = 'tools.ini'
+        self.config_section_defaults = 'UpdaterConfig'
+        self.config_section_self_update = 'UpdaterAutoUpdater'
         self.arguments = {}
         self.config_manager = ConfigManager(self.config_file_name)
-        colorama.init()
+        colorama.init(autoreset=True)
 
     def print_banner(self):
         """
@@ -62,9 +64,9 @@ class UpdateManager:
         """
         if is_bool:
             # return value.lower() in ('true', '1', 'yes', 'on')
-            return self.config_manager.get_boolean('UpdaterConfig', option, fallback=default)
+            return self.config_manager.get_boolean(self.config_section_defaults, option, fallback=default)
 
-        return self.config_manager.get_config('UpdaterConfig', option, fallback=default)
+        return self.config_manager.get_config(self.config_section_defaults, option, fallback=default)
 
     def parse_arguments(self):
         """
@@ -173,13 +175,13 @@ class UpdateManager:
         if not self.arguments.update_default_params:
             return False
 
-        self.config_manager.set_config('UpdaterConfig', 'disable_clean', str(self.arguments.disable_clean))
-        self.config_manager.set_config('UpdaterConfig', 'disable_repack', str(self.arguments.disable_repack))
-        self.config_manager.set_config('UpdaterConfig', 'disable_install_check',
+        self.config_manager.set_config(self.config_section_defaults, 'disable_clean', str(self.arguments.disable_clean))
+        self.config_manager.set_config(self.config_section_defaults, 'disable_repack', str(self.arguments.disable_repack))
+        self.config_manager.set_config(self.config_section_defaults, 'disable_install_check',
                                        str(self.arguments.disable_install_check))
-        self.config_manager.set_config('UpdaterConfig', 'disable_progress', str(self.arguments.disable_progress))
-        self.config_manager.set_config('UpdaterConfig', 'save_format_type', self.arguments.save_format_type)
-        self.config_manager.set_config('UpdaterConfig', 'use_github_api', self.arguments.use_github_api)
+        self.config_manager.set_config(self.config_section_defaults, 'disable_progress', str(self.arguments.disable_progress))
+        self.config_manager.set_config(self.config_section_defaults, 'save_format_type', self.arguments.save_format_type)
+        self.config_manager.set_config(self.config_section_defaults, 'use_github_api', self.arguments.use_github_api)
 
         logging.info(colorama.Fore.GREEN + 'Update default params successful')
 
@@ -224,12 +226,12 @@ class UpdateManager:
             update_list = self.config_manager.get_sections()
 
             # delete config data of this script
-            if 'UpdaterConfig' in update_list:
-                update_list.remove('UpdaterConfig')
+            if self.config_section_defaults in update_list:
+                update_list.remove(self.config_section_defaults)
 
             # delete self updater config
-            if 'UpdaterAutoUpdater' in update_list:
-                update_list.remove('UpdaterAutoUpdater')
+            if self.config_section_self_update in update_list:
+                update_list.remove(self.config_section_self_update)
 
         return update_list
 
@@ -240,9 +242,10 @@ class UpdateManager:
         updater = Updater(
             config_manager=self.config_manager,
         )
-        if not self.arguments.disable_self_update:
+        if self.config_section_self_update in self.config_manager.get_sections() and \
+                not self.arguments.disable_self_update:
             try:
-                updater.update('UpdaterAutoUpdater')
+                updater.update(self.config_section_self_update)
             except Exception as exception:
                 logging.info(exception)
 
@@ -279,7 +282,6 @@ class UpdateManager:
         """
         Main entry point for the UpdateManager.
         """
-        colorama.init(autoreset=True)
         signal.signal(signal.SIGINT, self.exit_handler)
         self.change_current_directory()
         self.print_banner()
