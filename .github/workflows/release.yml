@@ -39,7 +39,7 @@ jobs:
         id: prep
         run: |
           DATE=$(date +'%Y%m%d')  # Format: YYYYMMDD
-          echo "::set-output name=RELEASE_NAME::$DATE-${{ github.run_id }}"
+          echo "::set-output name=RELEASE_NAME::$DATE"
         shell: bash
 
       - name: Generate Release Notes
@@ -73,5 +73,5 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ steps.prep.outputs.RELEASE_NAME }}
           name: ${{ steps.prep.outputs.RELEASE_NAME }}
-          body: "New release based on remote changes. #${{ github.run_id }}"
+          body: ${{ steps.generate_notes.outputs.notes }}
           allowUpdates: true
