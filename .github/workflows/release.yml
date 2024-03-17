@@ -1,0 +1,77 @@
+name: Create Release
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:      
+  generate-build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          architecture: 'x86'
+
+      - name: Install PyInstaller
+        run: pip install pyinstaller
+
+      - name: Build the .exe application
+        run: pyinstaller --onefile updater.py --icon=assets/appicon.ico
+
+      - name: Upload the built .exe as an artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: updater-x86
+          path: dist/updater.exe
+        
+  create-release:
+    needs: generate-build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare Release Name
+        id: prep
+        run: |
+          DATE=$(date +'%Y%m%d')  # Format: YYYYMMDD
+          echo "::set-output name=RELEASE_NAME::$DATE-${{ github.run_id }}"
+        shell: bash
+
+      - name: Generate Release Notes
+        id: generate_notes
+        run: |
+          LAST_TAG=$(git describe --tags --abbrev=0)
+          NEW_TAG=$(git describe --tags --abbrev=0 HEAD)
+          RELEASE_NOTES=$(git log ${LAST_TAG}...${NEW_TAG} --oneline)
+          RELEASE_NOTES="${RELEASE_NOTES//'%'/'%25'}"
+          RELEASE_NOTES="${RELEASE_NOTES//$'\n'/'%0A'}"
+          RELEASE_NOTES="${RELEASE_NOTES//$'\r'/'%0D'}"
+          echo "::set-output name=notes::$RELEASE_NOTES"
+        shell: bash
+
+      - name: Create Tag
+        run: |
+          git config user.name "Sync-Bot"
+          git config user.email "xchwarze@gmail.com"
+          git tag ${{ steps.prep.outputs.RELEASE_NAME }}
+          git push origin ${{ steps.prep.outputs.RELEASE_NAME }}
+
+      - name: Download Build Artifact
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: Create Release
+        uses: ncipollo/release-action@v1.14.0
+        with:
+          artifacts: "./artifacts/updater-x86/*.exe"
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ steps.prep.outputs.RELEASE_NAME }}
+          name: ${{ steps.prep.outputs.RELEASE_NAME }}
+          body: "New release based on remote changes. #${{ github.run_id }}"
+          allowUpdates: true
