@@ -16,6 +16,9 @@ jobs:
           python-version: '3.11'
           architecture: 'x86'
 
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
       - name: Install PyInstaller
         run: pip install pyinstaller
 
@@ -39,7 +42,7 @@ jobs:
         id: prep
         run: |
           DATE=$(date +'%Y%m%d')  # Format: YYYYMMDD
-          echo "::set-output name=RELEASE_NAME::$DATE"
+          echo "::set-output name=RELEASE_NAME::v$DATE"
         shell: bash
 
       - name: Create Tag
