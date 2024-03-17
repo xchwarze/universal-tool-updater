@@ -42,6 +42,13 @@ jobs:
           echo "::set-output name=RELEASE_NAME::$DATE"
         shell: bash
 
+      - name: Create Tag
+        run: |
+          git config user.name "Sync-Bot"
+          git config user.email "xchwarze@gmail.com"
+          git tag ${{ steps.prep.outputs.RELEASE_NAME }}
+          git push origin ${{ steps.prep.outputs.RELEASE_NAME }}
+
       - name: Generate Release Notes
         id: generate_notes
         run: |
@@ -53,13 +60,6 @@ jobs:
           RELEASE_NOTES="${RELEASE_NOTES//$'\r'/'%0D'}"
           echo "::set-output name=notes::$RELEASE_NOTES"
         shell: bash
-
-      - name: Create Tag
-        run: |
-          git config user.name "Sync-Bot"
-          git config user.email "xchwarze@gmail.com"
-          git tag ${{ steps.prep.outputs.RELEASE_NAME }}
-          git push origin ${{ steps.prep.outputs.RELEASE_NAME }}
 
       - name: Download Build Artifact
         uses: actions/download-artifact@v4
