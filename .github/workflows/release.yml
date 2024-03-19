@@ -27,6 +27,11 @@ jobs:
         working-directory: ./src
         run: pyinstaller --onefile UpdateManager.py --icon=../assets/appicon.ico
 
+      - name: Test build
+        run: |
+          cp src/dist/UpdateManager.exe updater.exe
+          ./updater.exe --disable-self-update --disable-progress-bar --disable-install-check --disable-repack --force
+
       - name: Upload the built .exe as an artifact
         uses: actions/upload-artifact@v4
         with:
