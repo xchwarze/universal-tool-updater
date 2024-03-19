@@ -69,13 +69,13 @@ jobs:
       - name: Download Build Artifact
         uses: actions/download-artifact@v4
         with:
-          path: ./release
+          path: ./builds
 
       - name: Prepare the release directory
         run: |
-          mv release/UpdateManager.exe release/updater.exe
-          mkdir release/extras
+          mkdir -p release/extras
           cp -r extras/* release/extras/
+          cp builds/build-x86/UpdateManager.exe release/updater.exe
           cp unrar.exe release/
           cp tools.ini release/
           cp *.md release/
