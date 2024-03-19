@@ -82,7 +82,7 @@ jobs:
           path: ./release
 
       - name: Display structure of downloaded files
-        run: ls release -R
+        run: ls -R
 
       - name: Create Release
         uses: ncipollo/release-action@v1.14.0
