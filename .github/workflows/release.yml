@@ -59,12 +59,15 @@ jobs:
         shell: bash
         run: |
           NEW_TAG=$(git describe --tags --abbrev=0 HEAD)
-          LAST_TAG=$(git describe --tags --abbrev=0 HEAD^)
-          RELEASE_NOTES=$(git log ${LAST_TAG}...${NEW_TAG} --oneline)
-          RELEASE_NOTES="${RELEASE_NOTES//'%'/'%25'}"
-          RELEASE_NOTES="${RELEASE_NOTES//$'\n'/'%0A'}"
-          RELEASE_NOTES="${RELEASE_NOTES//$'\r'/'%0D'}"
-          echo "::set-output name=notes::$RELEASE_NOTES"
+          TAGS=( $(git tag --sort=-creatordate) )
+          CURRENT_INDEX=$(printf "%s\n" "${TAGS[@]}" | grep -n -m 1 "^$NEW_TAG$" | cut -d: -f1)
+          PREVIOUS_INDEX=$((CURRENT_INDEX - 1))
+          if [ $PREVIOUS_INDEX -gt 0 ]; then
+            PREVIOUS_TAG=${TAGS[$PREVIOUS_INDEX-1]} # Ajustar el índice para la base-0 de arrays en Bash
+            echo "::set-output name=notes::https://github.com/xchwarze/universal-tool-updater/compare/${PREVIOUS_TAG}...${NEW_TAG}"
+          else
+            echo "::set-output name=notes::This is the first tag."
+          fi
 
       - name: Download Build Artifact
         uses: actions/download-artifact@v4
@@ -90,5 +93,5 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ steps.prep.outputs.RELEASE_NAME }}
           name: ${{ steps.prep.outputs.RELEASE_NAME }}
-          body: ${{ steps.generate_notes.outputs.notes }}
+          body: "Changelog URL: ${{ steps.generate_notes.outputs.notes }}"
           allowUpdates: true
