@@ -58,8 +58,8 @@ jobs:
         id: generate_notes
         shell: bash
         run: |
-          LAST_TAG=$(git describe --tags --abbrev=0)
           NEW_TAG=$(git describe --tags --abbrev=0 HEAD)
+          LAST_TAG=$(git describe --tags --abbrev=0 HEAD^)
           RELEASE_NOTES=$(git log ${LAST_TAG}...${NEW_TAG} --oneline)
           RELEASE_NOTES="${RELEASE_NOTES//'%'/'%25'}"
           RELEASE_NOTES="${RELEASE_NOTES//$'\n'/'%0A'}"
