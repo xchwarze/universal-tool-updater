@@ -73,18 +73,20 @@ jobs:
 
       - name: Prepare the release directory
         run: |
+          mv release/UpdateManager.exe release/updater.exe
+          mkdir release/extras
           cp -r extras/* release/extras/
           cp unrar.exe release/
           cp tools.ini release/
           cp *.md release/
 
       - name: Compress the release directory
-        run: zip -r release.zip release/
+        run: zip -r release-x86.zip release/
 
       - name: Create Release
         uses: ncipollo/release-action@v1.14.0
         with:
-          artifacts: release.zip
+          artifacts: release-x86.zip
           token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ steps.prep.outputs.RELEASE_NAME }}
           name: ${{ steps.prep.outputs.RELEASE_NAME }}
