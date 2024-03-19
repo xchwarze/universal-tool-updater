@@ -27,21 +27,11 @@ jobs:
         working-directory: ./src
         run: pyinstaller --onefile UpdateManager.py --icon=../assets/appicon.ico
 
-      - name: Prepare the release directory
-        run: |
-          mkdir release
-          mkdir release/extras
-          cp -r extras/* release/extras
-          cp src/dist/UpdateManager.exe release/updater.exe
-          cp unrar.exe release/
-          cp tools.ini release/
-          cp *.md release/
-
       - name: Upload the built .exe as an artifact
         uses: actions/upload-artifact@v4
         with:
-          name: updater-x86
-          path: release/
+          name: build-x86
+          path: ./src/dist
         
   create-release:
     needs: generate-build
@@ -81,13 +71,20 @@ jobs:
         with:
           path: ./release
 
-      - name: Display structure of downloaded files
-        run: ls -R
+      - name: Prepare the release directory
+        run: |
+          cp -r extras/* release/extras/
+          cp unrar.exe release/
+          cp tools.ini release/
+          cp *.md release/
+
+      - name: Compress the release directory
+        run: zip -r release.zip release/
 
       - name: Create Release
         uses: ncipollo/release-action@v1.14.0
         with:
-          artifacts: "./release"
+          artifacts: release.zip
           token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ steps.prep.outputs.RELEASE_NAME }}
           name: ${{ steps.prep.outputs.RELEASE_NAME }}
