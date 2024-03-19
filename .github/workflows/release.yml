@@ -32,10 +32,10 @@ jobs:
           mkdir release
           mkdir release/extras
           cp -r extras/* release/extras
+          cp src/dist/UpdateManager.exe release/updater.exe
           cp unrar.exe release/
           cp tools.ini release/
           cp *.md release/
-          cp dist/UpdateManager.exe release/updater.exe
 
       - name: Upload the built .exe as an artifact
         uses: actions/upload-artifact@v4
@@ -52,10 +52,10 @@ jobs:
 
       - name: Prepare Release Name
         id: prep
+        shell: bash
         run: |
           DATE=$(date +'%Y%m%d')  # Format: YYYYMMDD
           echo "::set-output name=RELEASE_NAME::v$DATE"
-        shell: bash
 
       - name: Create Tag
         run: |
@@ -66,6 +66,7 @@ jobs:
 
       - name: Generate Release Notes
         id: generate_notes
+        shell: bash
         run: |
           LAST_TAG=$(git describe --tags --abbrev=0)
           NEW_TAG=$(git describe --tags --abbrev=0 HEAD)
@@ -74,12 +75,14 @@ jobs:
           RELEASE_NOTES="${RELEASE_NOTES//$'\n'/'%0A'}"
           RELEASE_NOTES="${RELEASE_NOTES//$'\r'/'%0D'}"
           echo "::set-output name=notes::$RELEASE_NOTES"
-        shell: bash
 
       - name: Download Build Artifact
         uses: actions/download-artifact@v4
         with:
           path: ./release
+
+      - name: Display structure of downloaded files
+        run: ls release -R
 
       - name: Create Release
         uses: ncipollo/release-action@v1.14.0
