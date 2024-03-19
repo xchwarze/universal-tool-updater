@@ -5,9 +5,9 @@ import os
 import colorama
 import logging
 
-from src.Updater import Updater
-from src.ConfigManager import ConfigManager
-from src.ColoredFormatter import ColoredFormatter
+from universal_updater.Updater import Updater
+from universal_updater.ConfigManager import ConfigManager
+from universal_updater.ColoredFormatter import ColoredFormatter
 
 
 class UpdateManager:
@@ -289,3 +289,9 @@ class UpdateManager:
         self.set_logging_level()
         self.update_default_params()
         self.handle_updates()
+
+
+# Entry point for the script
+if __name__ == '__main__':
+    # Initialize and run the main method of UpdateManager
+    UpdateManager().main()

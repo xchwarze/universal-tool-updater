@@ -17,19 +17,31 @@ jobs:
           architecture: 'x86'
 
       - name: Install dependencies
+        working-directory: ./src
         run: pip install -r requirements.txt
 
       - name: Install PyInstaller
         run: pip install pyinstaller
 
       - name: Build the .exe application
-        run: pyinstaller --onefile updater.py --icon=assets/appicon.ico
+        working-directory: ./src
+        run: pyinstaller --onefile UpdateManager.py --icon=../assets/appicon.ico
+
+      - name: Prepare the release directory
+        run: |
+          mkdir release
+          mkdir release/extras
+          cp -r extras/* release/extras
+          cp unrar.exe release/
+          cp tools.ini release/
+          cp *.md release/
+          cp dist/UpdateManager.exe release/updater.exe
 
       - name: Upload the built .exe as an artifact
         uses: actions/upload-artifact@v4
         with:
           name: updater-x86
-          path: dist/updater.exe
+          path: release/
         
   create-release:
     needs: generate-build
@@ -67,12 +79,12 @@ jobs:
       - name: Download Build Artifact
         uses: actions/download-artifact@v4
         with:
-          path: ./artifacts
+          path: ./release
 
       - name: Create Release
         uses: ncipollo/release-action@v1.14.0
         with:
-          artifacts: "./artifacts/updater-x86/*.exe"
+          artifacts: "./release"
           token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ steps.prep.outputs.RELEASE_NAME }}
           name: ${{ steps.prep.outputs.RELEASE_NAME }}
