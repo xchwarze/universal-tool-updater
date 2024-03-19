@@ -100,7 +100,7 @@ class UpdateManager:
             dest='disable_clean',
             help='disable tool folder clean',
             action=argparse.BooleanOptionalAction,
-            default=self.get_argparse_default('disable_clean', False)
+            default=self.get_argparse_default('disable_clean', True)
         )
         parser.add_argument(
             '-dr',
@@ -108,7 +108,7 @@ class UpdateManager:
             dest='disable_repack',
             help='disable tool repack',
             action=argparse.BooleanOptionalAction,
-            default=self.get_argparse_default('disable_repack', False)
+            default=self.get_argparse_default('disable_repack', True)
         )
         parser.add_argument(
             '-dic',
