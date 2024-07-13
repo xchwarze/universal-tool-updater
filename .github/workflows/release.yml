@@ -87,6 +87,7 @@ jobs:
           cp unrar.exe release/
           cp tools.ini release/
           cp *.md release/
+          cp *.txt release/
 
       - name: Compress the release directory
         run: zip -r release-x86.zip release/
