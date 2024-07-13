@@ -19,7 +19,7 @@ class UpdateManager:
         """
         Initialize the UpdateManager with a ConfigManager instance and command-line arguments.
         """
-        self.version = '2.1.1'
+        self.version = '2.2.0'
         self.config_file_name = 'tools.ini'
         self.config_section_defaults = 'UpdaterConfig'
         self.config_section_self_update = 'UpdaterAutoUpdater'
@@ -256,11 +256,16 @@ class UpdateManager:
         :param updater: An instance of the Updater class responsible for updating tools
         :param update_list: List of tools to update
         """
+        failed_updates = 0
+        total_updates = len(update_list)
+
         for tool in update_list:
             try:
                 updater.update(tool)
             except Exception as exception:
                 logging.info(exception)
+
+        logging.info(f"Update process completed: {total_updates - failed_updates} succeeded, {failed_updates} failed out of {total_updates} total updates.")
 
     def handle_updates(self):
         """
