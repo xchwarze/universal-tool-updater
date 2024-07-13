@@ -244,6 +244,8 @@ class UpdateManager:
         )
         if self.config_section_self_update in self.config_manager.get_sections() and \
                 not self.arguments.disable_self_update:
+            logging.info(colorama.Fore.YELLOW + f"\nChecking for engine updates:")
+
             try:
                 updater.update(self.config_section_self_update)
             except Exception as exception:
@@ -258,6 +260,7 @@ class UpdateManager:
         """
         failed_updates = 0
         total_updates = len(update_list)
+        logging.info(colorama.Fore.YELLOW + f"\nChecking for tool updates:")
 
         for tool in update_list:
             try:
@@ -265,7 +268,7 @@ class UpdateManager:
             except Exception as exception:
                 logging.info(exception)
 
-        logging.info(f"Update process completed: {total_updates - failed_updates} succeeded, {failed_updates} failed out of {total_updates} total updates.")
+        logging.info(colorama.Fore.YELLOW + f"\nUpdate process completed: {total_updates - failed_updates} succeeded, {failed_updates} failed out of {total_updates} total updates.")
 
     def handle_updates(self):
         """
