@@ -52,8 +52,7 @@ class UpdateManager:
         :param frame: Current stack frame
         """
         print(colorama.Fore.YELLOW + 'SIGINT or CTRL-C detected. Exiting gracefully')
-        if not self.arguments.disable_mutex_check and os.path.exists(self.process_mutex):
-            os.remove(self.process_mutex)
+        self.cleanup_mutex()
         sys.exit(0)
 
     def check_single_instance(self):
@@ -76,6 +75,13 @@ class UpdateManager:
         # Create a new lock file with the current PID
         with open(self.process_mutex, 'w') as lock:
             lock.write(str(os.getpid()))
+
+    def cleanup_mutex(self):
+        """
+        Removes the mutex file if mutex check is enabled and the file exists.
+        """
+        if not self.arguments.disable_mutex_check and os.path.exists(self.process_mutex):
+            os.remove(self.process_mutex)
 
     def get_argparse_default(self, option, default, is_bool=True):
         """
@@ -333,6 +339,7 @@ class UpdateManager:
         self.check_single_instance()
         self.update_default_params()
         self.handle_updates()
+        self.cleanup_mutex()
 
 
 # Entry point for the script
