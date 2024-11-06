@@ -269,6 +269,7 @@ class UpdateManager:
             try:
                 updater.update(tool)
             except Exception as exception:
+                failed_updates += 1
                 logging.info(exception)
 
         logging.info(colorama.Fore.YELLOW + f"\n[*] Update process completed: {total_updates - failed_updates} succeeded, {failed_updates} failed out of {total_updates} total updates.")
