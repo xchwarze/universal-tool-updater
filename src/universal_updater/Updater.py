@@ -158,7 +158,6 @@ class Updater:
         # generate version and download data
         scrape_data = self.scraper.scrape_step()
         if scrape_data is False:
-            logging.info(f'{self.tool_name}: nothing to update')
             return False
 
         # download and process file
