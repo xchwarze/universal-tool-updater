@@ -19,7 +19,7 @@ class UpdateManager:
         """
         Initialize the UpdateManager with a ConfigManager instance and command-line arguments.
         """
-        self.version = '2.3.0'
+        self.version = '2.3.1'
         self.process_mutex = 'mutex.lock'
         self.config_file_name = 'tools.ini'
         self.config_section_defaults = 'UpdaterConfig'
@@ -121,7 +121,7 @@ class UpdateManager:
             '--disable-self-update',
             dest='disable_self_update',
             help='disable self update of this script',
-            action=argparse.BooleanOptionalAction,
+            action='store_true',
             default=False
         )
         parser.add_argument(
@@ -129,7 +129,7 @@ class UpdateManager:
             '--disable-folder-clean',
             dest='disable_clean',
             help='disable tool folder clean',
-            action=argparse.BooleanOptionalAction,
+            action='store_true',
             default=self.get_argparse_default('disable_clean', True)
         )
         parser.add_argument(
@@ -137,7 +137,7 @@ class UpdateManager:
             '--disable-repack',
             dest='disable_repack',
             help='disable tool repack',
-            action=argparse.BooleanOptionalAction,
+            action='store_true',
             default=self.get_argparse_default('disable_repack', True)
         )
         parser.add_argument(
@@ -145,7 +145,7 @@ class UpdateManager:
             '--disable-install-check',
             dest='disable_install_check',
             help='disable tool install check',
-            action=argparse.BooleanOptionalAction,
+            action='store_true',
             default=self.get_argparse_default('disable_install_check', False)
         )
         parser.add_argument(
@@ -153,7 +153,7 @@ class UpdateManager:
             '--disable-progress-bar',
             dest='disable_progress',
             help='disable download progress bar',
-            action=argparse.BooleanOptionalAction,
+            action='store_true',
             default=self.get_argparse_default('disable_progress', False)
         )
         parser.add_argument(
@@ -169,7 +169,7 @@ class UpdateManager:
             '--force',
             dest='force_download',
             help='force download',
-            action=argparse.BooleanOptionalAction,
+            action='store_true',
             default=False
         )
         parser.add_argument(
@@ -184,7 +184,7 @@ class UpdateManager:
             '--update-default-params',
             dest='update_default_params',
             help='update default params',
-            action=argparse.BooleanOptionalAction,
+            action='store_true',
             default=False
         )
         parser.add_argument(
@@ -192,14 +192,14 @@ class UpdateManager:
             '--debug',
             dest='debug',
             help='enable debug output',
-            action=argparse.BooleanOptionalAction,
+            action='store_true',
             default=False
         )
         parser.add_argument(
             '--disable-mutex-check',
             dest='disable_mutex_check',
             help='disable the mutex check to allow multiple instances of the script',
-            action=argparse.BooleanOptionalAction,
+            action='store_true',
             default=False
         )
 
