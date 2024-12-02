@@ -4,6 +4,7 @@ import sys
 import os
 import colorama
 import logging
+import psutil
 
 from universal_updater.Updater import Updater
 from universal_updater.ConfigManager import ConfigManager
@@ -69,9 +70,12 @@ class UpdateManager:
             with open(self.process_mutex, 'r') as lock:
                 existing_pid = int(lock.read().strip())
 
-            if existing_pid != os.getpid():
-                print(f"Another instance of the script is already running or the mutex file '{self.process_mutex}' was left from a previous execution.")
+            # Verify if the process with the PID exists
+            if existing_pid and psutil.pid_exists(existing_pid):
+                print(f"Another instance of the script is already running (PID: {existing_pid}). Exiting.")
                 sys.exit(1)
+            else:
+                print(f"Stale mutex detected (PID: {existing_pid}). Regenerating with current PID.")
 
         # Create a new lock file with the current PID
         with open(self.process_mutex, 'w') as lock:
