@@ -286,7 +286,7 @@ class UpdateManager:
             try:
                 updater.update(self.config_section_self_update)
             except Exception as exception:
-                logging.info(exception)
+                logging.error(exception)
 
             # add missing new line separator
             logging.info("\n")
@@ -307,7 +307,7 @@ class UpdateManager:
                 updater.update(tool)
             except Exception as exception:
                 failed_updates += 1
-                logging.info(exception)
+                logging.error(exception)
 
         logging.info(colorama.Fore.YELLOW + f"\n[*] Update process completed: {total_updates - failed_updates} succeeded, {failed_updates} failed out of {total_updates} total updates.")
 
