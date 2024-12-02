@@ -1,8 +1,8 @@
 name: Create Release
 on:
-  push:
-    branches: [master]
-  pull_request:
+  workflow_dispatch:
+  release:
+    types: [created]
 
 jobs:      
   generate-build:
@@ -40,39 +40,11 @@ jobs:
         
   create-release:
     needs: generate-build
+    if: github.event_name == 'release' && github.event.action == 'created'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Prepare Release Name
-        id: prep
-        shell: bash
-        run: |
-          DATE=$(date +'%Y%m%d')  # Format: YYYYMMDD
-          echo "::set-output name=RELEASE_NAME::v$DATE"
-
-      - name: Create Tag
-        run: |
-          git config user.name "Sync-Bot"
-          git config user.email "xchwarze@gmail.com"
-          git tag ${{ steps.prep.outputs.RELEASE_NAME }}
-          git push origin ${{ steps.prep.outputs.RELEASE_NAME }}
-
-      - name: Generate Release Notes
-        id: generate_notes
-        shell: bash
-        run: |
-          NEW_TAG=$(git describe --tags --abbrev=0 HEAD)
-          TAGS=( $(git tag --sort=-creatordate) )
-          CURRENT_INDEX=$(printf "%s\n" "${TAGS[@]}" | grep -n -m 1 "^$NEW_TAG$" | cut -d: -f1)
-          PREVIOUS_INDEX=$((CURRENT_INDEX - 1))
-          if [ $PREVIOUS_INDEX -gt 0 ]; then
-            PREVIOUS_TAG=${TAGS[$PREVIOUS_INDEX-1]} # Ajustar el índice para la base-0 de arrays en Bash
-            echo "::set-output name=notes::https://github.com/xchwarze/universal-tool-updater/compare/${PREVIOUS_TAG}...${NEW_TAG}"
-          else
-            echo "::set-output name=notes::This is the first tag."
-          fi
 
       - name: Download Build Artifact
         uses: actions/download-artifact@v4
@@ -92,12 +64,9 @@ jobs:
       - name: Compress the release directory
         run: zip -r release-x86.zip release/
 
-      - name: Create Release
-        uses: ncipollo/release-action@v1.14.0
+      - name: Upload Setup as Release download
+        uses: softprops/action-gh-release@v2
         with:
-          artifacts: release-x86.zip
-          token: ${{ secrets.GITHUB_TOKEN }}
-          tag: ${{ steps.prep.outputs.RELEASE_NAME }}
-          name: ${{ steps.prep.outputs.RELEASE_NAME }}
-          body: "Changelog URL: ${{ steps.generate_notes.outputs.notes }}"
-          allowUpdates: true
+          files: release-x86.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
