@@ -44,14 +44,15 @@ class UpdateManager:
  Version: {self.version}
         """)
 
-    def exit_handler(self, signal, frame):
+    def exit_handler(self, signum, frame):
         """
-        Handles signals like SIGINT for graceful exit.
+        Handles signals like SIGINT or SIGTERM for graceful exit.
 
-        :param signal: Signal type
+        :param signum: Signal type (e.g., SIGINT, SIGTERM)
         :param frame: Current stack frame
         """
-        print(colorama.Fore.YELLOW + 'SIGINT or CTRL-C detected. Exiting gracefully')
+        signal_name = 'SIGINT' if signum == signal.SIGINT else 'SIGTERM'
+        print(colorama.Fore.YELLOW + f'{signal_name} detected. Exiting gracefully')
         self.cleanup_mutex()
         sys.exit(0)
 
@@ -331,7 +332,11 @@ class UpdateManager:
         """
         Main entry point for the UpdateManager.
         """
+        # setup signals
         signal.signal(signal.SIGINT, self.exit_handler)
+        signal.signal(signal.SIGTERM, self.exit_handler)
+
+        # setup script
         self.change_current_directory()
         self.print_banner()
         self.parse_arguments()
