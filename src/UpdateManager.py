@@ -118,14 +118,14 @@ class UpdateManager:
             '-u',
             '--update',
             dest='update',
-            help='list of tools (default: all)',
+            help='Specify a list of tools to update. Defaults to updating all tools if not provided.',
             nargs='*'
         )
         parser.add_argument(
             '-dsu',
             '--disable-self-update',
             dest='disable_self_update',
-            help='disable self update of this script',
+            help='Disable automatic self-update of this script.',
             action='store_true',
             default=False
         )
@@ -133,7 +133,7 @@ class UpdateManager:
             '-dfc',
             '--disable-folder-clean',
             dest='disable_clean',
-            help='disable tool folder clean',
+            help='Skip cleaning the tool\'s folder during updates.',
             action='store_true',
             default=self.get_argparse_default('disable_clean', True)
         )
@@ -141,7 +141,7 @@ class UpdateManager:
             '-dr',
             '--disable-repack',
             dest='disable_repack',
-            help='disable tool repack',
+            help='Prevent repacking of tools after the update process.',
             action='store_true',
             default=self.get_argparse_default('disable_repack', True)
         )
@@ -149,7 +149,7 @@ class UpdateManager:
             '-dic',
             '--disable-install-check',
             dest='disable_install_check',
-            help='disable tool install check',
+            help='Skip checking if the tools are properly installed.',
             action='store_true',
             default=self.get_argparse_default('disable_install_check', False)
         )
@@ -157,7 +157,7 @@ class UpdateManager:
             '-dpb',
             '--disable-progress-bar',
             dest='disable_progress',
-            help='disable download progress bar',
+            help='Disable the download progress bar for updates.',
             action='store_true',
             default=self.get_argparse_default('disable_progress', False)
         )
@@ -165,7 +165,7 @@ class UpdateManager:
             '-sft',
             '--save-format-type',
             dest='save_format_type',
-            help='compress save format name',
+            help='Specify the save format type for compressed updates: "full", "version", or "name".',
             choices=['full', 'version', 'name'],
             default=self.get_argparse_default('save_format_type', 'full', False)
         )
@@ -173,7 +173,7 @@ class UpdateManager:
             '-f',
             '--force',
             dest='force_download',
-            help='force download',
+            help='Force the download of updates, even if they appear up to date.',
             action='store_true',
             default=False
         )
@@ -181,14 +181,22 @@ class UpdateManager:
             '-uga',
             '--use-github-api',
             dest='use_github_api',
-            help='use github api with this token',
+            help='Use the GitHub API for updates, specifying the token to authenticate.',
             default=self.get_argparse_default('use_github_api', '', False)
         )
         parser.add_argument(
             '-udp',
             '--update-default-params',
             dest='update_default_params',
-            help='update default params',
+            help='Update the default parameters stored in the configuration.',
+            action='store_true',
+            default=False
+        )
+        parser.add_argument(
+            '-dmc',
+            '--disable-mutex-check',
+            dest='disable_mutex_check',
+            help='Allow multiple instances of the script to run simultaneously by disabling the mutex check.',
             action='store_true',
             default=False
         )
@@ -196,14 +204,7 @@ class UpdateManager:
             '-d',
             '--debug',
             dest='debug',
-            help='enable debug output',
-            action='store_true',
-            default=False
-        )
-        parser.add_argument(
-            '--disable-mutex-check',
-            dest='disable_mutex_check',
-            help='disable the mutex check to allow multiple instances of the script',
+            help='Enable detailed debug output for troubleshooting.',
             action='store_true',
             default=False
         )
