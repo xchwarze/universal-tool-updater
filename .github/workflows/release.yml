@@ -20,12 +20,32 @@ jobs:
         working-directory: ./src
         run: pip install -r requirements.txt
 
-      - name: Install PyInstaller
-        run: pip install pyinstaller
+      - name: Install PyInstaller and pyinstaller-versionfile
+        run: |
+          pip install pyinstaller
+          pip install pyinstaller-versionfile
+
+      - name: Extract version from sources
+        run: |
+          echo "PROJECT_VERSION=MASTER" >> $GITHUB_ENV
+          VERSION=$(awk -F"'" '/self.version = / {print $2}' ./src/UpdateManager.py)
+          echo "PROJECT_VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Generate version file
+        run: |
+          python -m pyinstaller_versionfile.create_versionfile \
+            --output_file=src/version_info.txt \
+            --version ${{ env.VERSION }} \
+            --company_name "Indetectables" \
+            --file_description "Universal Tool Updater" \
+            --internal_name "UpdateManager" \
+            --legal_copyright "© 2024 Indetectables. All rights reserved." \
+            --original_filename "updater.exe" \
+            --product_name "Universal Tool Updater"
 
       - name: Build the .exe application
         working-directory: ./src
-        run: pyinstaller --onefile UpdateManager.py --icon=../assets/appicon.ico
+        run: pyinstaller --onefile UpdateManager.py --icon=../assets/appicon.ico --version-file=version_info.txt
 
       - name: Test build
         run: |
