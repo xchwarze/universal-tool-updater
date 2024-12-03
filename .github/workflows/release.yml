@@ -35,15 +35,15 @@ jobs:
       - name: Generate version file
         shell: bash
         run: |
-          python -m pyinstaller_versionfile.create_versionfile \
-            --output_file=src/version_info.txt \
+          pyivf-make_version \
+            --outfile src/version_info.txt \
             --version ${{ env.PROJECT_VERSION }} \
-            --company_name "Indetectables" \
-            --file_description "Universal Tool Updater" \
-            --internal_name "UpdateManager" \
-            --legal_copyright "© 2024 Indetectables. All rights reserved." \
-            --original_filename "updater.exe" \
-            --product_name "Universal Tool Updater"
+            --company-name "Indetectables" \
+            --file-description "Universal Tool Updater" \
+            --internal-name "UpdateManager" \
+            --legal-copyright "© 2024 Indetectables. All rights reserved." \
+            --original-filename "updater.exe" \
+            --product-name "Universal Tool Updater"
 
       - name: Build the .exe application
         working-directory: ./src
