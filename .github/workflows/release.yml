@@ -41,7 +41,7 @@ jobs:
             --company-name "Indetectables" \
             --file-description "Universal Tool Updater" \
             --internal-name "UpdateManager" \
-            --legal-copyright "© 2024 Indetectables. All rights reserved." \
+            --legal-copyright "© 2024 github.com/xchwarze. All rights reserved." \
             --original-filename "updater.exe" \
             --product-name "Universal Tool Updater"
           echo "Generated version file content:"
