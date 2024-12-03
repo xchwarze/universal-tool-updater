@@ -66,6 +66,27 @@ Combinando el uso de `update_url` y `re_download` se consiguen las siguientes es
 Esto es útil para arreglar los links de descarga de GitHub o Sourceforge.
 4. También se dispone de un método de detección de nuevas versiones que en lugar de regex usa las cabeceras http con las que responde el servidor.
 
+## Parámetros de Línea de Comandos
+
+El actualizador ofrece un conjunto flexible de parámetros para controlar su comportamiento:
+
+| Parámetro                                                          | Descripción                                                                                       |
+|--------------------------------------------------------------------|---------------------------------------------------------------------------------------------------|
+| `-h, --help`                                                       | Muestra este mensaje de ayuda y finaliza.                                                        |
+| `-v, --version`                                                    | Muestra el número de versión del programa y finaliza.                                            |
+| `-u [UPDATE ...], --update [UPDATE ...]`                           | Especifica una lista de herramientas a actualizar. Si no se proporciona, se actualizarán todas. |
+| `-dsu, --disable-self-update`                                      | Desactiva la auto-actualización automática del script.                                            |
+| `-dfc, --disable-folder-clean`                                     | Evita limpiar la carpeta de herramientas durante las actualizaciones.                            |
+| `-dr, --disable-repack`                                            | Impide empaquetar nuevamente las herramientas después del proceso de actualización.              |
+| `-dic, --disable-install-check`                                    | Omite la verificación de si las herramientas están instaladas correctamente.                   |
+| `-dpb, --disable-progress-bar`                                     | Desactiva la barra de progreso durante las descargas.                                             |
+| `-sft {full,version,name}, --save-format-type {full,version,name}` | Especifica el tipo de formato para guardar las actualizaciones comprimidas: `full`, `version` o `name`. |
+| `-f, --force`                                                      | Fuerza la descarga de actualizaciones, incluso si ya están actualizadas.                         |
+| `-uga USE_GITHUB_API, --use-github-api USE_GITHUB_API`             | Usa la API de GitHub para actualizaciones, especificando el token para autenticarse.      |
+| `-udp, --update-default-params`                                    | Actualiza los parámetros predeterminados almacenados en la configuración.                      |
+| `-dmc, --disable-mutex-check`                                      | Permite ejecutar múltiples instancias del script desactivando la verificación de mutex.          |
+| `-d, --debug`                                                      | Activa la salida detallada de depuración para resolver problemas.                                |
+
 ## Ejemplos
 
 La herramienta soporta varios comandos y combinaciones. Estos son los mas usados.
