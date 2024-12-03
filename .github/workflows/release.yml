@@ -26,6 +26,7 @@ jobs:
           pip install pyinstaller-versionfile
 
       - name: Extract version from sources
+        shell: bash
         run: |
           echo "PROJECT_VERSION=MASTER" >> $GITHUB_ENV
           VERSION=$(awk -F"'" '/self.version = / {print $2}' ./src/UpdateManager.py)
@@ -35,7 +36,7 @@ jobs:
         run: |
           python -m pyinstaller_versionfile.create_versionfile \
             --output_file=src/version_info.txt \
-            --version ${{ env.VERSION }} \
+            --version ${{ env.PROJECT_VERSION }} \
             --company_name "Indetectables" \
             --file_description "Universal Tool Updater" \
             --internal_name "UpdateManager" \
