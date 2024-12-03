@@ -28,8 +28,8 @@ jobs:
       - name: Extract version from sources
         shell: bash
         run: |
-          echo "PROJECT_VERSION=MASTER" >> $GITHUB_ENV
           VERSION=$(awk -F"'" '/self.version = / {print $2}' ./src/UpdateManager.py)
+          echo "Detected VERSION: $VERSION"
           echo "PROJECT_VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Generate version file
@@ -44,6 +44,8 @@ jobs:
             --legal-copyright "© 2024 Indetectables. All rights reserved." \
             --original-filename "updater.exe" \
             --product-name "Universal Tool Updater"
+          echo "Generated version file content:"
+          cat src/version_info.txt
 
       - name: Build the .exe application
         working-directory: ./src
