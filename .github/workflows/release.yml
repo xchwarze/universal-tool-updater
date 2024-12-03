@@ -33,6 +33,7 @@ jobs:
           echo "PROJECT_VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Generate version file
+        shell: bash
         run: |
           python -m pyinstaller_versionfile.create_versionfile \
             --output_file=src/version_info.txt \
