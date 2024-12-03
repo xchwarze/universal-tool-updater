@@ -31,9 +31,10 @@ re_download = die_win64_portable_(?:\S+).zip
 
 [Portmon]
 folder = Monitor\Portmon
-url = https://docs.microsoft.com/en-us/sysinternals/downloads/portmon
+url = https://raw.githubusercontent.com/MicrosoftDocs/sysinternals/main/sysinternals/downloads/portmon.md
 update_url = https://download.sysinternals.com/files/PortMon.zip
-re_version = <h1 [^>]*>Portmon for Windows v(.*?)</h1>
+from = web
+re_version = # Portmon v(\d+\.\d+)
 ```
 
 The values used for configuration are:
