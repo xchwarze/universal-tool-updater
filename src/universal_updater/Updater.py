@@ -77,13 +77,15 @@ class Updater:
         self.check_tool_installed()
         self.script_executor.execute_script('pre_update')
 
-    def post_update(self, processing_info):
+    def post_update(self, scrape_data, processing_info):
         """
         Execute post-update scripts.
 
+        :param scrape_data: Scrape data from the tool
         :param processing_info: Information about the processing step
         """
-        self.script_executor.execute_script('post_update')
+        self.config_manager.update_local_version(self.tool_name, scrape_data['download_version'])
+        self.script_executor.execute_script('post_update', processing_info)
         self.script_executor.execute_global_script(processing_info)
 
     def download_step(self, download_url):
@@ -112,7 +114,14 @@ class Updater:
         # unpack logic
         logging.debug(f'{self.tool_name}: unpack file {file_path}')
         unpack_folder_path = self.packer.unpack_step(file_path)
-        self.script_executor.execute_script('post_unpack')
+        self.script_executor.execute_script(
+            'post_unpack',
+            {
+                'tool_name': self.tool_name,
+                'unpack_folder': unpack_folder_path,
+                'download_version': download_version
+            }
+        )
 
         # save or repack logic
         disable_repack = self.tool_config.get('disable_repack', None)
@@ -172,8 +181,8 @@ class Updater:
         processing_info = self.processing_tool_step(update_file_path, scrape_data['download_version'])
 
         # update complete
-        self.config_manager.update_local_version(self.tool_name, scrape_data['download_version'])
-        self.post_update(processing_info)
+        logging.debug(f'{self.tool_name}: start "post_update"')
+        self.post_update(scrape_data, processing_info)
 
         logging.info(f'{self.tool_name}: update complete')
         return True
