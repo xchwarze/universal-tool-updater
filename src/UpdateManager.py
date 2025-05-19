@@ -317,6 +317,9 @@ class UpdateManager:
                 failed_names.append(name)
                 logging.error(exception)
 
+        # add missing new line separator
+        logging.info("\n")
+
         success = total_updates - failed_updates
         logging.info(colorama.Fore.YELLOW +
                      f"[*] Update process completed: {success} succeeded, "
