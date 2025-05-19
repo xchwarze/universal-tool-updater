@@ -110,6 +110,7 @@ class Updater:
         :return: Dictionary containing processing information
         """
         # unpack logic
+        logging.debug(f'{self.tool_name}: unpack file {file_path}')
         unpack_folder_path = self.packer.unpack_step(file_path)
         self.script_executor.execute_script('post_unpack')
 
@@ -117,11 +118,13 @@ class Updater:
         disable_repack = self.tool_config.get('disable_repack', None)
         tool_path = self.file_manager.processing_tool_path(unpack_folder_path)
         if self.disable_repack or disable_repack:
+            logging.debug(f'{self.tool_name}: repack is disabled')
             return self.file_manager.save(
                 tool_folder_path=tool_path['folder_path'],
                 tool_unpack_path=tool_path['unpack_path'],
             )
 
+        logging.debug(f'{self.tool_name}: repack update')
         return self.packer.repack_step(
             tool_folder_path=tool_path['folder_path'],
             tool_unpack_path=tool_path['unpack_path'],
@@ -156,12 +159,16 @@ class Updater:
         self.pre_update()
 
         # generate version and download data
+        logging.debug(f'{self.tool_name}: start "scrape_step"')
         scrape_data = self.scraper.scrape_step()
         if scrape_data is False:
             return False
 
         # download and process file
+        logging.debug(f'{self.tool_name}: start "download_step"')
         update_file_path = self.download_step(scrape_data['download_url'])
+
+        logging.debug(f'{self.tool_name}: start "processing_tool_step"')
         processing_info = self.processing_tool_step(update_file_path, scrape_data['download_version'])
 
         # update complete

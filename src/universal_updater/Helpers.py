@@ -23,3 +23,17 @@ class Helpers:
         """
         parts = urlparse(url)
         return parts.scheme in ("http", "https") and bool(parts.netloc)
+
+    @staticmethod
+    def get_filename_from_url(url: str) -> str:
+        """
+        Extract the filename from a URL, stripping fragments and queries.
+        """
+        fragment_removed = url.split('#')[0]  # keep to left of first "#"
+        query_string_removed = fragment_removed.split('?')[0]
+        scheme_removed = query_string_removed.split('://')[-1].split(':')[-1]
+
+        if scheme_removed.find('/') == -1:
+            return ''
+
+        return pathlib.Path(scheme_removed).name
