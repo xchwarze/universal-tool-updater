@@ -47,18 +47,18 @@ class FileManager:
         """
         Process and return the tool's folder and unpack paths.
 
-        :param tool_unpack_path: Path where the tool is unpacked
-        :return: Dictionary containing 'folder_path' and 'unpack_path'
+        :param tool_unpack_path: Path-like where the tool is unpacked
+        :return: Dict with 'folder_path' and 'unpack_path' as pathlib.Path objects
         """
         # dirty hack for correct folders structure
         folder_list = os.listdir(tool_unpack_path)
         folder_sample = pathlib.Path(tool_unpack_path).joinpath(folder_list[0])
-        if len(folder_list) == 1 & os.path.isdir(folder_sample):
+        if len(folder_list) == 1 and os.path.isdir(folder_sample):
             tool_unpack_path = folder_sample
 
         # tool folder
         tool_folder_path = self.get_tool_install_path()
-        pathlib.Path(tool_folder_path).mkdir(parents=True, exist_ok=True)
+        tool_folder_path.mkdir(parents=True, exist_ok=True)
 
         return {
             'folder_path': tool_folder_path,
