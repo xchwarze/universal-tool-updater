@@ -35,15 +35,13 @@ class FileManager:
         """
         Retrieve the installation path for the tool.
 
-        :return: Absolute path to the tool's installation folder
+        :return: Absolute path object for the tool's installation folder
         """
-        tool_folder_path = self.tool_config['folder']
-        if not pathlib.Path(tool_folder_path).is_absolute():
-            tool_folder_path = pathlib.Path.resolve(
-                pathlib.Path(self.script_path).joinpath(tool_folder_path)
-            )
+        tool_folder_path = pathlib.Path(self.tool_config['folder'])
+        if not tool_folder_path.is_absolute():
+            tool_folder_path = pathlib.Path(self.script_path).joinpath(tool_folder_path)
 
-        return tool_folder_path
+        return tool_folder_path.resolve(strict=False)
 
     def processing_tool_path(self, tool_unpack_path):
         """
