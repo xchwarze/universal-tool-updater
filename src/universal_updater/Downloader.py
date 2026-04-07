@@ -88,8 +88,9 @@ class Downloader:
                 last_exception = exception
                 if attempt < self.download_retries - 1:
                     wait = 2 ** attempt
-                    logging.warning(f'{self.tool_name}: download failed (attempt {attempt + 1}/{self.download_retries}), retrying in {wait}s...')
-                    logging.error(f'{self.tool_name}: download url {download_url}')
+                    logging.warning(f'{self.tool_name}: download attempt {attempt + 1}/{self.download_retries} failed, retrying in {wait}s...')
                     time.sleep(wait)
+                else:
+                    logging.error(f'{self.tool_name}: download attempt {attempt + 1}/{self.download_retries} failed')
 
         raise Exception(colorama.Fore.RED + f'{self.tool_name}: Error {last_exception}')

@@ -47,6 +47,31 @@ class Scraper:
         self.tool_name = tool_name
         self.tool_config = tool_config
 
+    def _request_with_retry(self, method, url, headers):
+        """
+        Performs an HTTP request with retry logic and exponential backoff.
+
+        :param method: Callable that performs the request (e.g. requests.get)
+        :param url: The URL to request
+        :param headers: Dictionary of HTTP headers
+        :return: Response object
+        :raises Exception: If all attempts fail
+        """
+        last_exception = None
+        for attempt in range(self.request_retries):
+            try:
+                response = method(url, headers=headers, timeout=self.request_timeout)
+                response.raise_for_status()
+                return response
+            except Exception as exception:
+                last_exception = exception
+                if attempt < self.request_retries - 1:
+                    wait = 2 ** attempt
+                    logging.warning(f'{self.tool_name}: request failed (attempt {attempt + 1}/{self.request_retries}), retrying in {wait}s...')
+                    time.sleep(wait)
+
+        raise Exception(colorama.Fore.RED + f'{self.tool_name}: Error {last_exception}')
+
     def head_request(self, url, headers=None):
         """
         Performs a HEAD request to a given URL with retry logic.
@@ -59,20 +84,7 @@ class Scraper:
         if headers is None:
             headers = {'User-Agent': self.user_agent}
 
-        last_exception = None
-        for attempt in range(self.request_retries):
-            try:
-                response = requests.head(url, headers=headers, timeout=self.request_timeout)
-                response.raise_for_status()
-                return response
-            except Exception as exception:
-                last_exception = exception
-                if attempt < self.request_retries - 1:
-                    wait = 2 ** attempt
-                    logging.warning(f'{self.tool_name}: request failed (attempt {attempt + 1}/{self.request_retries}), retrying in {wait}s...')
-                    time.sleep(wait)
-
-        raise Exception(colorama.Fore.RED + f'{self.tool_name}: Error {last_exception}')
+        return self._request_with_retry(requests.head, url, headers)
 
     def get_request(self, url, headers=None):
         """
@@ -86,20 +98,7 @@ class Scraper:
         if headers is None:
             headers = {'User-Agent': self.user_agent}
 
-        last_exception = None
-        for attempt in range(self.request_retries):
-            try:
-                response = requests.get(url, headers=headers, timeout=self.request_timeout)
-                response.raise_for_status()
-                return response
-            except Exception as exception:
-                last_exception = exception
-                if attempt < self.request_retries - 1:
-                    wait = 2 ** attempt
-                    logging.warning(f'{self.tool_name}: request failed (attempt {attempt + 1}/{self.request_retries}), retrying in {wait}s...')
-                    time.sleep(wait)
-
-        raise Exception(colorama.Fore.RED + f'{self.tool_name}: Error {last_exception}')
+        return self._request_with_retry(requests.get, url, headers)
 
     #################
     # Scraper methods
