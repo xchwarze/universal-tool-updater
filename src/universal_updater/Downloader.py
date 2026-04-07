@@ -39,7 +39,7 @@ class Downloader:
         :return: Resolved filename string
         """
         try:
-            response = self.session.head(url, headers={'User-Agent': self.user_agent},
+            response = requests.head(url, headers={'User-Agent': self.user_agent},
                                          allow_redirects=True, timeout=self.request_timeout)
             response.raise_for_status()
 
