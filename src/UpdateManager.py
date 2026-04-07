@@ -23,7 +23,7 @@ class UpdateManager:
         """
         Initialize the UpdateManager with a ConfigManager instance and command-line arguments.
         """
-        self.version = '2.4.0'
+        self.version = '2.5.0'
         self.process_mutex = 'mutex.lock'
         self.config_file_name = 'tools.ini'
         self.config_section_defaults = 'UpdaterConfig'
@@ -291,7 +291,7 @@ class UpdateManager:
         self.config_manager.set_config(self.config_section_defaults, 'parallel_workers', str(self.arguments.parallel_workers))
         self.config_manager.set_config(self.config_section_defaults, 'download_segments', str(self.arguments.download_segments))
 
-        logging.info(colorama.Fore.GREEN + 'Update default params successful')
+        logging.info(colorama.Fore.GREEN + '[*] Update default params successful')
 
     def set_logging_level(self):
         """
