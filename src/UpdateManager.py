@@ -90,6 +90,19 @@ class UpdateManager:
         if not self.arguments.disable_mutex_check and os.path.exists(self.process_mutex):
             os.remove(self.process_mutex)
 
+    def get_argparse_default_int(self, option, default):
+        """
+        Retrieves an integer default value from config, falling back to default on invalid values.
+
+        :param option: The name of the argparse option
+        :param default: The integer default value if not found or invalid
+        :return: Integer default value
+        """
+        try:
+            return int(self.get_argparse_default(option, default, is_bool=False))
+        except (ValueError, TypeError):
+            return default
+
     def get_argparse_default(self, option, default, is_bool=True):
         """
         Retrieves the default value for a given argparse option from the configuration.
@@ -216,7 +229,7 @@ class UpdateManager:
             dest='request_timeout',
             help='Timeout in seconds for HTTP requests.',
             type=int,
-            default=int(self.get_argparse_default('request_timeout', 30, is_bool=False))
+            default=self.get_argparse_default_int('request_timeout', 30)
         )
         parser.add_argument(
             '-dre',
@@ -224,7 +237,7 @@ class UpdateManager:
             dest='download_retries',
             help='Number of retry attempts on download failure.',
             type=int,
-            default=int(self.get_argparse_default('download_retries', 3, is_bool=False))
+            default=self.get_argparse_default_int('download_retries', 3)
         )
         parser.add_argument(
             '-pw',
@@ -232,7 +245,7 @@ class UpdateManager:
             dest='parallel_workers',
             help='Number of tools to update in parallel.',
             type=int,
-            default=int(self.get_argparse_default('parallel_workers', 1, is_bool=False))
+            default=self.get_argparse_default_int('parallel_workers', 1)
         )
 
         self.arguments = parser.parse_args()

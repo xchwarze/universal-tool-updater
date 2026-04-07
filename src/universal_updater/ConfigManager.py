@@ -29,7 +29,8 @@ class ConfigManager:
         :param fallback: Fallback value if key is not found
         :return: Value of the configuration key
         """
-        return self.config.get(section, key, fallback=fallback)
+        with self._lock:
+            return self.config.get(section, key, fallback=fallback)
 
     def set_config(self, section, key, value):
         """
@@ -53,8 +54,9 @@ class ConfigManager:
         :param name: Name of the tool
         :return: Dictionary containing the tool's configuration
         """
-        if name in self.config.sections():
-            return dict(self.config.items(name))
+        with self._lock:
+            if name in self.config.sections():
+                return dict(self.config.items(name))
 
         raise Exception(colorama.Fore.RED + f'No entries were found for {name}')
 
@@ -67,7 +69,8 @@ class ConfigManager:
         :param fallback: Fallback value if option is not found
         :return: Boolean value of the configuration option
         """
-        return self.config.getboolean(section, option, fallback=fallback)
+        with self._lock:
+            return self.config.getboolean(section, option, fallback=fallback)
 
     def get_sections(self):
         """
@@ -75,7 +78,8 @@ class ConfigManager:
 
         :return: List of section names
         """
-        return self.config.sections()
+        with self._lock:
+            return self.config.sections()
 
     def update_local_version(self, name, version):
         """
