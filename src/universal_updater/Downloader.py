@@ -38,17 +38,21 @@ class Downloader:
         :param url: Original download URL
         :return: Resolved filename string
         """
-        headers = {'User-Agent': self.user_agent}
-        response = requests.head(url, headers=headers, allow_redirects=True, timeout=self.request_timeout)
+        try:
+            response = self.session.head(url, headers={'User-Agent': self.user_agent},
+                                         allow_redirects=True, timeout=self.request_timeout)
+            response.raise_for_status()
 
-        # try to get filename from Content-Disposition header
-        content_disposition = response.headers.get('content-disposition', '')
-        if 'filename=' in content_disposition:
-            logging.debug(f'{self.tool_name}: using name from content-disposition: {content_disposition}')
-            return content_disposition.split('filename=')[-1].strip('"; ')
+            # try to get filename from Content-Disposition header
+            content_disposition = response.headers.get('content-disposition', '')
+            if 'filename=' in content_disposition:
+                return content_disposition.split('filename=')[-1].strip('"; ')
 
-        # fallback to filename from final URL (after redirects)
-        return Helpers.get_filename_from_url(response.url)
+            # fallback to filename from final URL (after redirects)
+            return Helpers.get_filename_from_url(response.url)
+        except Exception:
+            # HEAD not supported, fall back to URL parsing
+            return Helpers.get_filename_from_url(url)
 
     def download_file(self, url, file_name):
         """

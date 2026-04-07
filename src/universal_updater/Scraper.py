@@ -29,6 +29,7 @@ class Scraper:
         self.use_github_api = use_github_api
         self.request_timeout = request_timeout
         self.request_retries = request_retries
+        self.session = requests.Session()
         self.arch_suffix = '_x64' if '64' in platform.machine() else '_x86'
         self.tool_name = ""
         self.tool_config = {}
@@ -49,20 +50,21 @@ class Scraper:
         self.tool_name = tool_name
         self.tool_config = tool_config
 
-    def _request_with_retry(self, method, url, headers):
+    def _request_with_retry(self, method_name, url, headers):
         """
         Performs an HTTP request with retry logic and exponential backoff.
 
-        :param method: Callable that performs the request (e.g. requests.get)
+        :param method_name: HTTP method name ('get' or 'head')
         :param url: The URL to request
         :param headers: Dictionary of HTTP headers
         :return: Response object
         :raises Exception: If all attempts fail
         """
+        method = getattr(self.session, method_name)
         last_exception = None
         for attempt in range(self.request_retries):
             try:
-                response = method(url, headers=headers, timeout=self.request_timeout)
+                response = method(url, headers=headers, timeout=self.request_timeout, allow_redirects=True)
                 response.raise_for_status()
                 return response
             except Exception as exception:
@@ -86,7 +88,7 @@ class Scraper:
         if headers is None:
             headers = {'User-Agent': self.user_agent}
 
-        return self._request_with_retry(requests.head, url, headers)
+        return self._request_with_retry('head', url, headers)
 
     def get_request(self, url, headers=None):
         """
@@ -100,10 +102,8 @@ class Scraper:
         if headers is None:
             headers = {'User-Agent': self.user_agent}
 
-        return self._request_with_retry(requests.get, url, headers)
+        return self._request_with_retry('get', url, headers)
 
-    #################
-    # Scraper methods
     def get_arch_config(self, key):
         """
         Returns the architecture-specific config value if available, falling back to the generic key.
@@ -113,6 +113,8 @@ class Scraper:
         """
         return self.tool_config.get(f'{key}{self.arch_suffix}') or self.tool_config.get(key)
 
+    #################
+    # Scraper methods
     #################
     def scrape_web(self):
         """
@@ -246,6 +248,51 @@ class Scraper:
         return {
             'download_version': download_version,
             'download_url': update_url,
+        }
+
+    def scrape_scoop(self):
+        """
+        Scrape a Scoop bucket manifest for version and download URL.
+
+        :return: dict|bool: A dictionary containing:
+            - 'download_version' (str): Version from the manifest.
+            - 'download_url' (str): Resolved download URL.
+            Returns False if already up to date.
+        :raises Exception: If the manifest is missing required fields.
+        """
+        app = self.tool_config.get('url', None)
+        bucket = self.tool_config.get('scoop_bucket', 'main').capitalize()
+        force_x86 = self.tool_config.get('force_x86', 'false').lower() == 'true'
+
+        manifest_url = self.scoop_manifest.format(bucket, app)
+        logging.debug(f'{self.tool_name}: fetching scoop manifest from {manifest_url}')
+        response = self.get_request(manifest_url)
+        manifest = response.json()
+
+        version = manifest.get('version')
+        if not version:
+            raise Exception(colorama.Fore.RED + f'{self.tool_name}: no version found in scoop manifest')
+
+        local_version = self.tool_config.get('local_version', '0')
+        if not self.force_download and local_version == version:
+            logging.info(f'{self.tool_name}: {local_version} is the latest version')
+            return False
+
+        logging.info(f'{self.tool_name}: updated from {local_version} --> {version}')
+
+        arch_key = '32bit' if (force_x86 or self.arch_suffix == '_x86') else '64bit'
+        arch_url = manifest.get('architecture', {}).get(arch_key, {}).get('url')
+        download_url = arch_url or manifest.get('url')
+
+        if not download_url:
+            raise Exception(colorama.Fore.RED + f'{self.tool_name}: no download URL found in scoop manifest')
+
+        if isinstance(download_url, list):
+            download_url = download_url[0]
+
+        return {
+            'download_version': version,
+            'download_url': download_url,
         }
 
     #################
@@ -418,54 +465,6 @@ class Scraper:
             raise Exception(colorama.Fore.RED + f'{self.tool_name}: re_download regex not match ({re_download})')
 
         return update_url
-
-    #################
-    # Scoop scraper
-    #################
-    def scrape_scoop(self):
-        """
-        Scrape a Scoop bucket manifest for version and download URL.
-
-        :return: dict|bool: A dictionary containing:
-            - 'download_version' (str): Version from the manifest.
-            - 'download_url' (str): Resolved download URL.
-            Returns False if already up to date.
-        :raises Exception: If the manifest is missing required fields.
-        """
-        app = self.tool_config.get('url', None)
-        bucket = self.tool_config.get('scoop_bucket', 'main').capitalize()
-        force_x86 = self.tool_config.get('force_x86', 'false').lower() == 'true'
-
-        manifest_url = self.scoop_manifest.format(bucket, app)
-        logging.debug(f'{self.tool_name}: fetching scoop manifest from {manifest_url}')
-        response = self.get_request(manifest_url)
-        manifest = response.json()
-
-        version = manifest.get('version')
-        if not version:
-            raise Exception(colorama.Fore.RED + f'{self.tool_name}: no version found in scoop manifest')
-
-        local_version = self.tool_config.get('local_version', '0')
-        if not self.force_download and local_version == version:
-            logging.info(f'{self.tool_name}: {local_version} is the latest version')
-            return False
-
-        logging.info(f'{self.tool_name}: updated from {local_version} --> {version}')
-
-        arch_key = '32bit' if (force_x86 or self.arch_suffix == '_x86') else '64bit'
-        arch_url = manifest.get('architecture', {}).get(arch_key, {}).get('url')
-        download_url = arch_url or manifest.get('url')
-
-        if not download_url:
-            raise Exception(colorama.Fore.RED + f'{self.tool_name}: no download URL found in scoop manifest')
-
-        if isinstance(download_url, list):
-            download_url = download_url[0]
-
-        return {
-            'download_version': version,
-            'download_url': download_url,
-        }
 
     #################
     # Scrape step

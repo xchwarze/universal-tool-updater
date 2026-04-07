@@ -23,7 +23,7 @@ class UpdateManager:
         """
         Initialize the UpdateManager with a ConfigManager instance and command-line arguments.
         """
-        self.version = '2.5.0'
+        self.version = '2.5.1'
         self.process_mutex = 'mutex.lock'
         self.config_file_name = 'tools.ini'
         self.config_section_defaults = 'UpdaterConfig'
