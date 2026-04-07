@@ -48,6 +48,10 @@ The values used for configuration are:
 | `re_version`       | NO        | Regex to extract the new version string from the HTML at `url`.                                                |
 | `re_download`      | NO        | Regex to extract the download link from HTML. Should capture either a full URL or a relative path.             |
 | `update_url`       | NO        | Base URL or direct download link. Used when `re_download` yields a relative path or when no regex is provided. |
+| `re_download_x64`  | NO        | Architecture-specific override for `re_download` on x64 systems. Falls back to `re_download` if not set.      |
+| `re_download_x86`  | NO        | Architecture-specific override for `re_download` on x86 systems. Falls back to `re_download` if not set.      |
+| `update_url_x64`   | NO        | Architecture-specific override for `update_url` on x64 systems. Falls back to `update_url` if not set.        |
+| `update_url_x86`   | NO        | Architecture-specific override for `update_url` on x86 systems. Falls back to `update_url` if not set.        |
 | `update_file_pass` | NO        | Password to unzip the downloaded archive.                                                                      |
 | `merge`            | NO        | If set, merge the freshly downloaded files into the existing folder.                                           |
 | `scoop_bucket`     | NO        | Scoop bucket to use when `from = scoop`: `main` or `extras`. Default: `main`.                                  |

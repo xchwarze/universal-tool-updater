@@ -1,5 +1,6 @@
 import re
 import time
+import platform
 import requests
 import urllib.parse
 import hashlib
@@ -28,6 +29,7 @@ class Scraper:
         self.use_github_api = use_github_api
         self.request_timeout = request_timeout
         self.request_retries = request_retries
+        self.arch_suffix = '_x64' if '64' in platform.machine() else '_x86'
         self.tool_name = ""
         self.tool_config = {}
         self.github_version_check = 'https://github.com/{0}/releases.atom'
@@ -102,6 +104,15 @@ class Scraper:
 
     #################
     # Scraper methods
+    def get_arch_config(self, key):
+        """
+        Returns the architecture-specific config value if available, falling back to the generic key.
+
+        :param key: Base config key (e.g. 're_download', 'update_url')
+        :return: Value for the arch-specific key or the generic key, or None if neither exists
+        """
+        return self.tool_config.get(f'{key}{self.arch_suffix}') or self.tool_config.get(key)
+
     #################
     def scrape_web(self):
         """
@@ -159,7 +170,7 @@ class Scraper:
         logging.debug(f'{self.tool_name}: Regex matching for version done.')
 
         # the download url is not configured, so I have to generate one.
-        update_url = self.tool_config.get('update_url', None)
+        update_url = self.get_arch_config('update_url')
         if not update_url:
             logging.debug(f'{self.tool_name}: update_url not set. I try to generate it.')
             download_url = self.github_files.format(github_repo, download_version)
@@ -190,7 +201,7 @@ class Scraper:
         json_response = api_response.json()
         logging.debug(f'{self.tool_name}: JSON fetched, extracting version and download URL.')
 
-        update_url = self.tool_config.get('update_url', None)
+        update_url = self.get_arch_config('update_url')
         if not update_url:
             logging.debug(f'{self.tool_name}: update_url not set. I try to generate it.')
             update_url = self.get_download_url_from_github_api(json_response)
@@ -218,7 +229,7 @@ class Scraper:
         :raises Exception: If 'update_url' is missing or an HTTP error occurs.
         """
         # get http response
-        update_url = self.tool_config.get('update_url', None)
+        update_url = self.get_arch_config('update_url')
         if not update_url:
             raise Exception(colorama.Fore.RED +
                             f'{self.tool_name}: the update_url field is required for the selected mode')
@@ -323,8 +334,8 @@ class Scraper:
         :param response_html: HTML content of the web page
         :return: Download URL found or None
         """
-        re_download = self.tool_config.get('re_download', None)
-        update_url = self.tool_config.get('update_url', None)
+        re_download = self.get_arch_config('re_download')
+        update_url = self.get_arch_config('update_url')
 
         # case 2: if update_url is not set, scrape the link from html
         if re_download:
@@ -366,7 +377,7 @@ class Scraper:
         :param download_url: Base URL for download
         :return: Download URL found or None
         """
-        re_download = self.tool_config.get('re_download', None)
+        re_download = self.get_arch_config('re_download')
         if not re_download:
             raise Exception(colorama.Fore.RED + f'{self.tool_name}: re_download not set!')
 
@@ -388,7 +399,7 @@ class Scraper:
         :param json: JSON response from GitHub API
         :return: Download URL found or None
         """
-        re_download = self.tool_config.get('re_download', None)
+        re_download = self.get_arch_config('re_download')
         if not re_download:
             raise Exception(colorama.Fore.RED + f'{self.tool_name}: re_download regex not set')
 
@@ -441,7 +452,7 @@ class Scraper:
 
         logging.info(f'{self.tool_name}: updated from {local_version} --> {version}')
 
-        arch_key = '32bit' if force_x86 else '64bit'
+        arch_key = '32bit' if (force_x86 or self.arch_suffix == '_x86') else '64bit'
         arch_url = manifest.get('architecture', {}).get(arch_key, {}).get('url')
         download_url = arch_url or manifest.get('url')
 

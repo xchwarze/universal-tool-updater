@@ -48,6 +48,10 @@ Los valores utilizados para la configuración son:
 | `re_version`       | NO          | Regex para extraer la nueva versión del HTML en `url`.                                              |
 | `re_download`      | NO          | Regex para extraer el enlace de descarga del HTML; puede capturar URL completa o ruta relativa.     |
 | `update_url`       | NO          | URL base o enlace directo de descarga. Se usa cuando `re_download` da ruta relativa o no hay regex. |
+| `re_download_x64`  | NO          | Override de `re_download` para sistemas x64. Si no está, se usa `re_download`.                      |
+| `re_download_x86`  | NO          | Override de `re_download` para sistemas x86. Si no está, se usa `re_download`.                      |
+| `update_url_x64`   | NO          | Override de `update_url` para sistemas x64. Si no está, se usa `update_url`.                        |
+| `update_url_x86`   | NO          | Override de `update_url` para sistemas x86. Si no está, se usa `update_url`.                        |
 | `update_file_pass` | NO          | Contraseña para descomprimir el archivo descargado.                                                 |
 | `merge`            | NO          | Si está definido, fusiona los archivos nuevos con los existentes.                                   |
 | `scoop_bucket`     | NO          | Bucket de Scoop cuando `from = scoop`: `main` o `extras`. Por defecto: `main`.                      |
