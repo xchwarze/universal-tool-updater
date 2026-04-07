@@ -216,6 +216,13 @@ class UpdateManager:
             default=False
         )
         parser.add_argument(
+            '--dry-run',
+            dest='dry_run',
+            help='Check for available updates without downloading or installing anything.',
+            action='store_true',
+            default=False
+        )
+        parser.add_argument(
             '-d',
             '--debug',
             dest='debug',

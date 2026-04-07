@@ -107,6 +107,7 @@ El actualizador ofrece un conjunto flexible de parámetros para controlar su com
 | `-udp, --update-default-params`                                    | Actualiza los parámetros predeterminados almacenados en la configuración.                               |
 | `-dmc, --disable-mutex-check`                                      | Permite ejecutar múltiples instancias del script desactivando la verificación de mutex.                 |
 | `-d, --debug`                                                      | Activa la salida detallada de depuración para resolver problemas.                                       |
+| `--dry-run`                                                        | Verifica actualizaciones disponibles sin descargar ni instalar nada.                                    |
 | `-rt SEGUNDOS, --request-timeout SEGUNDOS`                         | Timeout en segundos para las peticiones HTTP. Por defecto: `30`.                                        |
 | `-dre N, --download-retries N`                                     | Cantidad de reintentos ante fallo de descarga (backoff exponencial). Por defecto: `3`.                  |
 | `-pw N, --parallel-workers N`                                      | Cantidad de herramientas a actualizar en paralelo. Por defecto: `1` (secuencial).                       |

@@ -44,6 +44,7 @@ class Updater:
         self.config_manager = config_manager
         self.disable_install_check = updater_setup.get('disable_install_check', False)
         self.disable_repack = updater_setup.get('disable_repack', False)
+        self.dry_run = updater_setup.get('dry_run', False)
         self.scraper = Scraper(
             force_download=updater_setup.get('force_download', False),
             use_github_api=updater_setup.get('use_github_api', ''),
@@ -188,6 +189,10 @@ class Updater:
             scrape_data = self.scraper.scrape_step()
             if scrape_data is False:
                 return False
+
+            if self.dry_run:
+                logging.info(colorama.Fore.CYAN + f'{self.tool_name}: [dry-run] update available → {scrape_data["download_version"]} ({scrape_data["download_url"]})')
+                return True
 
             # download and process file
             logging.debug(f'{self.tool_name}: start "download_step"')
