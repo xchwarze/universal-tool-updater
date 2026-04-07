@@ -30,7 +30,7 @@ class Downloader:
         self.request_timeout = request_timeout
         self.tool_name = ""
 
-    def _resolve_filename(self, url):
+    def resolve_filename(self, url):
         """
         Resolve the real filename via HEAD request.
         Handles redirects and Content-Disposition headers.
@@ -60,8 +60,16 @@ class Downloader:
         """
         dest_path = pathlib.Path(self.update_folder_path).joinpath(file_name)
 
-        dl = Pypdl(logger=logging.getLogger(__name__))
-        result = dl.start(
+        # create a logger adapter to prefix pypdl messages with the tool name
+        # this propagates to the root logger, so ColoredFormatter applies automatically
+        logger = logging.LoggerAdapter(
+            logging.getLogger('downloader'),
+            {'tool_name': self.tool_name}
+        )
+        logger.process = lambda msg, kwargs: (f'{self.tool_name}: {msg}', kwargs)
+
+        downloader = Pypdl(logger=logger)
+        result = downloader.start(
             url=url,
             file_path=str(dest_path),
             segments=self.download_segments,
@@ -75,7 +83,7 @@ class Downloader:
             timeout=aiohttp.ClientTimeout(total=self.request_timeout),
         )
 
-        if dl.failed or not result:
+        if downloader.failed or not result:
             raise Exception(colorama.Fore.RED + f'{self.tool_name}: download failed')
 
         return dest_path
@@ -91,7 +99,7 @@ class Downloader:
         self.tool_name = tool_name
 
         # resolve real filename (handles redirects and Content-Disposition)
-        file_name = self._resolve_filename(download_url)
+        file_name = self.resolve_filename(download_url)
         logging.info(f'{self.tool_name}: downloading update "{file_name}"')
 
         return self.download_file(url=download_url, file_name=file_name)
