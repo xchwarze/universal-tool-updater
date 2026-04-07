@@ -2,6 +2,7 @@ import argparse
 import signal
 import sys
 import os
+import platform
 import threading
 import colorama
 import logging
@@ -44,7 +45,7 @@ class UpdateManager:
     
  Universal Tool Updater - by DSR!
  Web: https://github.com/xchwarze/universal-tool-updater
- Version: {self.version}
+ Version: {self.version} | Architecture: {'x64' if '64' in platform.machine() else 'x86'}
         """)
 
     def exit_handler(self, signum, frame):
