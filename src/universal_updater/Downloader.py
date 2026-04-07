@@ -1,10 +1,10 @@
 import pathlib
 import aiohttp
+import requests
 import colorama
 import logging
 
 from pypdl import Pypdl
-
 from universal_updater.Helpers import Helpers
 
 
@@ -30,17 +30,40 @@ class Downloader:
         self.request_timeout = request_timeout
         self.tool_name = ""
 
-    def download_file(self, url):
+    def _resolve_filename(self, url):
+        """
+        Resolve the real filename via HEAD request.
+        Handles redirects and Content-Disposition headers.
+
+        :param url: Original download URL
+        :return: Resolved filename string
+        """
+        headers = {'User-Agent': self.user_agent}
+        response = requests.head(url, headers=headers, allow_redirects=True, timeout=self.request_timeout)
+
+        # try to get filename from Content-Disposition header
+        content_disposition = response.headers.get('content-disposition', '')
+        if 'filename=' in content_disposition:
+            logging.debug(f'{self.tool_name}: using name from content-disposition: {content_disposition}')
+            return content_disposition.split('filename=')[-1].strip('"; ')
+
+        # fallback to filename from final URL (after redirects)
+        return Helpers.get_filename_from_url(response.url)
+
+    def download_file(self, url, file_name):
         """
         Download a file from a given URL using pypdl.
 
         :param url: URL of the file to download
+        :param file_name: Resolved filename for the download
         :return: Path where the file has been saved
         """
+        dest_path = pathlib.Path(self.update_folder_path).joinpath(file_name)
+
         dl = Pypdl(logger=logging.getLogger(__name__))
         result = dl.start(
             url=url,
-            file_path=str(self.update_folder_path),
+            file_path=str(dest_path),
             segments=self.download_segments,
             display=not self.disable_progress,
             multisegment=True,
@@ -51,10 +74,11 @@ class Downloader:
             headers={'User-Agent': self.user_agent},
             timeout=aiohttp.ClientTimeout(total=self.request_timeout),
         )
+
         if dl.failed or not result:
             raise Exception(colorama.Fore.RED + f'{self.tool_name}: download failed')
 
-        return pathlib.Path(result[0].path)
+        return dest_path
 
     def download_from_web(self, tool_name, download_url):
         """
@@ -65,7 +89,9 @@ class Downloader:
         :return: Path where the file has been saved
         """
         self.tool_name = tool_name
-        file_name = Helpers.get_filename_from_url(download_url)
+
+        # resolve real filename (handles redirects and Content-Disposition)
+        file_name = self._resolve_filename(download_url)
         logging.info(f'{self.tool_name}: downloading update "{file_name}"')
 
-        return self.download_file(url=download_url)
+        return self.download_file(url=download_url, file_name=file_name)
