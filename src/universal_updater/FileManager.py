@@ -1,6 +1,7 @@
 import os
 import pathlib
 import shutil
+import colorama
 import logging
 
 from universal_updater.Helpers import Helpers
@@ -37,7 +38,11 @@ class FileManager:
 
         :return: Absolute path object for the tool's installation folder
         """
-        tool_folder_path = pathlib.Path(self.tool_config['folder'])
+        folder = self.tool_config.get('folder')
+        if not folder:
+            raise Exception(colorama.Fore.RED + f'{self.tool_name}: "folder" key is required in config')
+
+        tool_folder_path = pathlib.Path(folder)
         if not tool_folder_path.is_absolute():
             tool_folder_path = pathlib.Path(self.script_path).joinpath(tool_folder_path)
 

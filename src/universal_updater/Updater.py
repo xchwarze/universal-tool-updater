@@ -18,7 +18,7 @@ class Updater:
     repacking the tool. It also handles pre-update and post-update scripts.
     """
 
-    def __init__(self, config_manager, updater_setup = {}):
+    def __init__(self, config_manager, updater_setup=None):
         """
         Initialize the Updater class with various configurations.
 
@@ -33,6 +33,8 @@ class Updater:
             - save_format_type: Format type for saving (default "full")
             - use_github_api: Flag to use GitHub API. The value is the token to use the api.
         """
+        if updater_setup is None:
+            updater_setup = {}
         self.tool_name = ""
         self.tool_config = {}
         self.script_path = os.fsdecode(os.getcwdb())

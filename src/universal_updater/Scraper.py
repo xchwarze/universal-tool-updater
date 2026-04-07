@@ -47,6 +47,33 @@ class Scraper:
         self.tool_name = tool_name
         self.tool_config = tool_config
 
+    def head_request(self, url, headers=None):
+        """
+        Performs a HEAD request to a given URL with retry logic.
+
+        :param url: The URL to perform the HEAD request to
+        :param headers: Optional dictionary containing HTTP headers.
+        :return: Response object from the HEAD request
+        :raises Exception: If an error occurs during the request
+        """
+        if headers is None:
+            headers = {'User-Agent': self.user_agent}
+
+        last_exception = None
+        for attempt in range(self.request_retries):
+            try:
+                response = requests.head(url, headers=headers, timeout=self.request_timeout)
+                response.raise_for_status()
+                return response
+            except Exception as exception:
+                last_exception = exception
+                if attempt < self.request_retries - 1:
+                    wait = 2 ** attempt
+                    logging.warning(f'{self.tool_name}: request failed (attempt {attempt + 1}/{self.request_retries}), retrying in {wait}s...')
+                    time.sleep(wait)
+
+        raise Exception(colorama.Fore.RED + f'{self.tool_name}: Error {last_exception}')
+
     def get_request(self, url, headers=None):
         """
         Performs a GET request to a given URL.
@@ -197,13 +224,8 @@ class Scraper:
             raise Exception(colorama.Fore.RED +
                             f'{self.tool_name}: the update_url field is required for the selected mode')
 
-        try:
-            headers = {'User-Agent': self.user_agent}
-            http_response = requests.head(update_url, headers=headers, timeout=self.request_timeout)
-            http_response.raise_for_status()
-            logging.debug(f'{self.tool_name}: HTTP headers fetched, extracting version.')
-        except Exception as exception:
-            raise Exception(colorama.Fore.RED + f'{self.tool_name}: Error {exception}')
+        http_response = self.head_request(update_url)
+        logging.debug(f'{self.tool_name}: HTTP headers fetched, extracting version.')
 
         download_version = self.check_version_from_http(http_response.headers)
         if download_version is None:
@@ -279,14 +301,17 @@ class Scraper:
         :return: Version string
         """
         local_version = self.tool_config.get('local_version', '0')
+        tag_name = json.get('tag_name')
+        if not tag_name:
+            raise Exception(colorama.Fore.RED + f'{self.tool_name}: "tag_name" not found in GitHub API response')
 
-        if not self.force_download and local_version == json['tag_name']:
+        if not self.force_download and local_version == tag_name:
             logging.info(f'{self.tool_name}: {local_version} is the latest version')
             return None
 
-        logging.info(f'{self.tool_name}: updated from {local_version} --> {json["tag_name"]}')
+        logging.info(f'{self.tool_name}: updated from {local_version} --> {tag_name}')
 
-        return json['tag_name']
+        return tag_name
 
     #################
     # Download url methods
@@ -368,8 +393,12 @@ class Scraper:
         if not re_download:
             raise Exception(colorama.Fore.RED + f'{self.tool_name}: re_download regex not set')
 
+        assets = json.get('assets')
+        if assets is None:
+            raise Exception(colorama.Fore.RED + f'{self.tool_name}: "assets" not found in GitHub API response')
+
         update_url = None
-        for attachment in json['assets']:
+        for attachment in assets:
             html_regex_download = re.findall(re_download, attachment['browser_download_url'])
             if html_regex_download:
                 update_url = attachment['browser_download_url']
