@@ -49,7 +49,7 @@ jobs:
 
       - name: Build the .exe application
         working-directory: ./src
-        run: pyinstaller --onefile UpdateManager.py --icon=../assets/appicon.ico --version-file=version_info.txt
+        run: pyinstaller --onefile UpdateManager.py --icon=../assets/appicon.ico --version-file=version_info.txt --collect-all aiohttp --collect-all aiofiles
 
       - name: Test build
         run: |
