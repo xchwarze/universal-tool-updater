@@ -43,13 +43,15 @@ Los valores utilizados para la configuración son:
 |--------------------|-------------|-----------------------------------------------------------------------------------------------------|
 | `folder`           | SÍ          | Carpeta donde se guardará la herramienta. Se crea si no existe.                                     |
 | `url`              | SÍ          | Página web principal para comprobar versión y/o hacer scraping con regex.                           |
-| `from`             | NO          | Estrategia a emplear: `web`, `github` o `http`. Por defecto `web`.                                  |
+| `from`             | NO          | Estrategia a emplear: `web`, `github`, `http` o `scoop`. Por defecto `web`.                         |
 | `local_version`    | NO          | Versión actualmente instalada. Se actualiza tras cada ejecución exitosa.                            |
 | `re_version`       | NO          | Regex para extraer la nueva versión del HTML en `url`.                                              |
 | `re_download`      | NO          | Regex para extraer el enlace de descarga del HTML; puede capturar URL completa o ruta relativa.     |
 | `update_url`       | NO          | URL base o enlace directo de descarga. Se usa cuando `re_download` da ruta relativa o no hay regex. |
 | `update_file_pass` | NO          | Contraseña para descomprimir el archivo descargado.                                                 |
 | `merge`            | NO          | Si está definido, fusiona los archivos nuevos con los existentes.                                   |
+| `scoop_bucket`     | NO          | Bucket de Scoop cuando `from = scoop`: `main` o `extras`. Por defecto: `main`.                      |
+| `force_x86`        | NO          | Con `from = scoop`, prefiere la descarga de 32 bits sobre 64 bits. Por defecto: `false`.            |
 | `pre_update`       | NO          | Comando o script a ejecutar antes de iniciar la actualización.                                      |
 | `post_update`      | NO          | Comando o script a ejecutar inmediatamente tras completar la descarga.                              |
 | `post_unpack`      | NO          | Comando o script a ejecutar tras descomprimir el archivo descargado.                                |
@@ -75,8 +77,14 @@ Los valores utilizados para la configuración son:
    - Si difiere de `local_version` (o `force_download`), usa `update_url` para descargar.  
    - Si coincide y `force_download` es falso, no hay actualización.
 
-4. **En otro caso**  
-   Error: no hay ni `re_download` ni `update_url` para determinar el enlace. 
+4. **Modo Scoop (`from = scoop`)**
+   - Obtiene el manifest JSON desde `https://raw.githubusercontent.com/ScoopInstaller/{Bucket}/master/bucket/{app}.json`.
+   - Lee `version` del root del manifest y compara con `local_version`.
+   - Resuelve la URL desde `architecture.64bit.url` (o `32bit` si `force_x86 = true`), con fallback al campo `url` del root.
+   - Si el campo URL es una lista, usa el primer elemento.
+
+5. **En otro caso**
+   Error: no hay ni `re_download` ni `update_url` para determinar el enlace.
 
 
 ## Parámetros de Línea de Comandos

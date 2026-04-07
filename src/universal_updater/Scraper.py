@@ -30,6 +30,7 @@ class Scraper:
         self.github_version_check = 'https://github.com/{0}/releases.atom'
         self.github_files = 'https://github.com/{0}/releases/expanded_assets/{1}'
         self.github_api_files = 'https://api.github.com/repos/{0}/releases/latest'
+        self.scoop_manifest = 'https://raw.githubusercontent.com/ScoopInstaller/{0}/master/bucket/{1}.json'
         self.re_github_version = '\/releases\/tag\/(\S+)"'
         self.re_github_download = '"(.*?/{0})"'
 
@@ -369,6 +370,54 @@ class Scraper:
         return update_url
 
     #################
+    # Scoop scraper
+    #################
+    def scrape_scoop(self):
+        """
+        Scrape a Scoop bucket manifest for version and download URL.
+
+        :return: dict|bool: A dictionary containing:
+            - 'download_version' (str): Version from the manifest.
+            - 'download_url' (str): Resolved download URL.
+            Returns False if already up to date.
+        :raises Exception: If the manifest is missing required fields.
+        """
+        app = self.tool_config.get('url', None)
+        bucket = self.tool_config.get('scoop_bucket', 'main').capitalize()
+        force_x86 = self.tool_config.get('force_x86', 'false').lower() == 'true'
+
+        manifest_url = self.scoop_manifest.format(bucket, app)
+        logging.debug(f'{self.tool_name}: fetching scoop manifest from {manifest_url}')
+        response = self.get_request(manifest_url)
+        manifest = response.json()
+
+        version = manifest.get('version')
+        if not version:
+            raise Exception(colorama.Fore.RED + f'{self.tool_name}: no version found in scoop manifest')
+
+        local_version = self.tool_config.get('local_version', '0')
+        if not self.force_download and local_version == version:
+            logging.info(f'{self.tool_name}: {local_version} is the latest version')
+            return False
+
+        logging.info(f'{self.tool_name}: updated from {local_version} --> {version}')
+
+        arch_key = '32bit' if force_x86 else '64bit'
+        arch_url = manifest.get('architecture', {}).get(arch_key, {}).get('url')
+        download_url = arch_url or manifest.get('url')
+
+        if not download_url:
+            raise Exception(colorama.Fore.RED + f'{self.tool_name}: no download URL found in scoop manifest')
+
+        if isinstance(download_url, list):
+            download_url = download_url[0]
+
+        return {
+            'download_version': version,
+            'download_url': download_url,
+        }
+
+    #################
     # Scrape step
     #################
     def scrape_step(self):
@@ -382,5 +431,7 @@ class Scraper:
             return self.scrape_github()
         elif from_url == 'http':
             return self.scrape_http()
+        elif from_url == 'scoop':
+            return self.scrape_scoop()
 
         return self.scrape_web()

@@ -43,13 +43,15 @@ The values used for configuration are:
 |--------------------|-----------|----------------------------------------------------------------------------------------------------------------|
 | `folder`           | YES       | Folder where the tool will be saved. If it does not exist, it will be created.                                 |
 | `url`              | YES       | Web page used as the primary source for version check and/or regex scraping.                                   |
-| `from`             | NO        | Strategy to use: `web`, `github` or `http`. Default is `web`.                                                  |
+| `from`             | NO        | Strategy to use: `web`, `github`, `http` or `scoop`. Default is `web`.                                         |
 | `local_version`    | NO        | Currently installed version. Updated after each successful run.                                                |
 | `re_version`       | NO        | Regex to extract the new version string from the HTML at `url`.                                                |
 | `re_download`      | NO        | Regex to extract the download link from HTML. Should capture either a full URL or a relative path.             |
 | `update_url`       | NO        | Base URL or direct download link. Used when `re_download` yields a relative path or when no regex is provided. |
 | `update_file_pass` | NO        | Password to unzip the downloaded archive.                                                                      |
 | `merge`            | NO        | If set, merge the freshly downloaded files into the existing folder.                                           |
+| `scoop_bucket`     | NO        | Scoop bucket to use when `from = scoop`: `main` or `extras`. Default: `main`.                                  |
+| `force_x86`        | NO        | When `from = scoop`, prefer the 32-bit download over 64-bit. Default: `false`.                                 |
 | `pre_update`       | NO        | Script or command to run before performing the update.                                                         |
 | `post_update`      | NO        | Script or command to run immediately after the update download completes.                                      |
 | `post_unpack`      | NO        | Script or command to run after unpacking the downloaded archive.                                               |
@@ -75,7 +77,13 @@ The values used for configuration are:
    - If the hash differs from `local_version` (or `force_download`), uses `update_url` as the download link.  
    - If the headers match and `force_download` is false, no update is performed.
 
-4. **Otherwise**  
+4. **Scoop mode (`from = scoop`)**
+   - Fetches the JSON manifest from `https://raw.githubusercontent.com/ScoopInstaller/{Bucket}/master/bucket/{app}.json`.
+   - Reads `version` from the manifest root and compares against `local_version`.
+   - Resolves the download URL from `architecture.64bit.url` (or `32bit` if `force_x86 = true`), falling back to the root `url` field.
+   - If the URL field is a list, uses the first element.
+
+5. **Otherwise**
    Error out: neither `re_download` nor `update_url` provided, so no download link can be determined.
 
 
