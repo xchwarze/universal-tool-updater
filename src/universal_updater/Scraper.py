@@ -1,4 +1,5 @@
 import re
+import time
 import requests
 import urllib.parse
 import hashlib
@@ -13,18 +14,20 @@ class Scraper:
     Handles all scraping tasks for the Updater.
     """
 
-    def __init__(self, force_download, use_github_api, user_agent, request_timeout=30):
+    def __init__(self, force_download, use_github_api, user_agent, request_timeout=30, request_retries=3):
         """
         Initialize the Scraper with necessary configurations.
 
         :param use_github_api: Boolean to determine if GitHub API should be used
         :param user_agent: User agent string for HTTP requests
         :param request_timeout: Timeout in seconds for HTTP requests
+        :param request_retries: Number of retry attempts on request failure
         """
         self.user_agent = user_agent
         self.force_download = force_download
         self.use_github_api = use_github_api
         self.request_timeout = request_timeout
+        self.request_retries = request_retries
         self.tool_name = ""
         self.tool_config = {}
         self.github_version_check = 'https://github.com/{0}/releases.atom'
@@ -56,12 +59,20 @@ class Scraper:
         if headers is None:
             headers = {'User-Agent': self.user_agent}
 
-        try:
-            response = requests.get(url, headers=headers, timeout=self.request_timeout)
-            response.raise_for_status()
-            return response
-        except Exception as exception:
-            raise Exception(colorama.Fore.RED + f'{self.tool_name}: Error {exception}')
+        last_exception = None
+        for attempt in range(self.request_retries):
+            try:
+                response = requests.get(url, headers=headers, timeout=self.request_timeout)
+                response.raise_for_status()
+                return response
+            except Exception as exception:
+                last_exception = exception
+                if attempt < self.request_retries - 1:
+                    wait = 2 ** attempt
+                    logging.warning(f'{self.tool_name}: request failed (attempt {attempt + 1}/{self.request_retries}), retrying in {wait}s...')
+                    time.sleep(wait)
+
+        raise Exception(colorama.Fore.RED + f'{self.tool_name}: Error {last_exception}')
 
     #################
     # Scraper methods

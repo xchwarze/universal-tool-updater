@@ -11,7 +11,7 @@ from universal_updater.Helpers import Helpers
 class Downloader:
     """Handles file downloads."""
 
-    def __init__(self, user_agent, disable_progress, update_folder_path, download_retries=3):
+    def __init__(self, user_agent, disable_progress, update_folder_path, download_retries=3, request_timeout=30):
         """
         Initialize with optional user_agent, disable_progress flag, and update_folder_path.
 
@@ -19,11 +19,13 @@ class Downloader:
         :param disable_progress: Flag to disable progress bar
         :param update_folder_path: Path to the folder where updates will be saved
         :param download_retries: Number of retry attempts on download failure
+        :param request_timeout: Timeout in seconds for HTTP requests
         """
         self.user_agent = user_agent
         self.disable_progress = disable_progress
         self.update_folder_path = update_folder_path
         self.download_retries = download_retries
+        self.request_timeout = request_timeout
         self.tool_name = ""
 
     def download_file(self, url, progress_bar_desc):
@@ -35,7 +37,7 @@ class Downloader:
         :return: Path where the file has been saved
         """
         headers = {'User-Agent': self.user_agent}
-        response = requests.get(url, headers=headers, stream=True)
+        response = requests.get(url, headers=headers, stream=True, timeout=self.request_timeout)
         response.raise_for_status()
 
         # grab data from response

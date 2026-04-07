@@ -39,11 +39,12 @@ class ConfigManager:
         :param key: Key in the section
         :param value: Value to set
         """
-        if not self.config.has_section(section):
-            self.config.add_section(section)
+        with self._lock:
+            if not self.config.has_section(section):
+                self.config.add_section(section)
 
-        self.config.set(section, key, value)
-        self.save_config()
+            self.config.set(section, key, value)
+            self._write_config()
 
     def get_tool_config(self, name):
         """
@@ -90,5 +91,11 @@ class ConfigManager:
         Save the current configuration to file.
         """
         with self._lock:
-            with open(self.config_file_name, 'w') as config_file:
-                self.config.write(config_file)
+            self._write_config()
+
+    def _write_config(self):
+        """
+        Write the current configuration to file (caller must hold the lock).
+        """
+        with open(self.config_file_name, 'w') as config_file:
+            self.config.write(config_file)

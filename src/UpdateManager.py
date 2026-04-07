@@ -237,6 +237,9 @@ class UpdateManager:
 
         self.arguments = parser.parse_args()
 
+        if self.arguments.parallel_workers < 1:
+            parser.error('--parallel-workers must be at least 1')
+
     def update_default_params(self):
         """
         Updates default parameters in the configuration based on command-line arguments.
@@ -313,6 +316,7 @@ class UpdateManager:
         """
         updater = Updater(
             config_manager=self.config_manager,
+            updater_setup=vars(self.arguments),
         )
         if self.config_section_self_update in self.config_manager.get_sections() and \
                 not self.arguments.disable_self_update:
@@ -338,6 +342,8 @@ class UpdateManager:
         lock = threading.Lock()
         total_updates = len(update_list)
         parallel_workers = updater_setup.get('parallel_workers', 1)
+        if parallel_workers > 1 and not updater_setup.get('disable_progress', False):
+            updater_setup = {**updater_setup, 'disable_progress': True}
         logging.info(colorama.Fore.YELLOW + '[+] Checking for tool updates:')
 
         def update_tool(name):

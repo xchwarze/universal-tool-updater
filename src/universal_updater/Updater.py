@@ -47,12 +47,14 @@ class Updater:
             use_github_api=updater_setup.get('use_github_api', ''),
             user_agent=self.request_user_agent,
             request_timeout=updater_setup.get('request_timeout', 30),
+            request_retries=updater_setup.get('download_retries', 3),
         )
         self.downloader = Downloader(
             disable_progress=updater_setup.get('disable_progress', False),
             user_agent=self.request_user_agent,
             update_folder_path=self.update_folder_path,
             download_retries=updater_setup.get('download_retries', 3),
+            request_timeout=updater_setup.get('request_timeout', 30),
         )
         self.packer = Packer(
             save_format_type=updater_setup.get('save_format_type', 'full'),
