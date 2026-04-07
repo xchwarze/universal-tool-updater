@@ -55,7 +55,7 @@ The values used for configuration are:
 | `update_file_pass` | NO        | Password to unzip the downloaded archive.                                                                      |
 | `merge`            | NO        | If set, merge the freshly downloaded files into the existing folder.                                           |
 | `scoop_bucket`     | NO        | Scoop bucket to use when `from = scoop`: `main` or `extras`. Default: `main`.                                  |
-| `force_x86`        | NO        | When `from = scoop`, prefer the 32-bit download over 64-bit. Default: `false`.                                 |
+| `force_x86`        | NO        | When `from = scoop`, force the 32-bit download regardless of OS architecture. Default: `false`.                |
 | `pre_update`       | NO        | Script or command to run before performing the update.                                                         |
 | `post_update`      | NO        | Script or command to run immediately after the update download completes.                                      |
 | `post_unpack`      | NO        | Script or command to run after unpacking the downloaded archive.                                               |
@@ -84,7 +84,7 @@ The values used for configuration are:
 4. **Scoop mode (`from = scoop`)**
    - Fetches the JSON manifest from `https://raw.githubusercontent.com/ScoopInstaller/{Bucket}/master/bucket/{app}.json`.
    - Reads `version` from the manifest root and compares against `local_version`.
-   - Resolves the download URL from `architecture.64bit.url` (or `32bit` if `force_x86 = true`), falling back to the root `url` field.
+   - Resolves the download URL from `architecture.64bit.url` or `architecture.32bit.url` based on the detected OS architecture. `force_x86 = true` overrides this and always uses `32bit`. Falls back to the root `url` field if the architecture key is not present.
    - If the URL field is a list, uses the first element.
 
 5. **Otherwise**

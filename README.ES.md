@@ -55,7 +55,7 @@ Los valores utilizados para la configuración son:
 | `update_file_pass` | NO          | Contraseña para descomprimir el archivo descargado.                                                 |
 | `merge`            | NO          | Si está definido, fusiona los archivos nuevos con los existentes.                                   |
 | `scoop_bucket`     | NO          | Bucket de Scoop cuando `from = scoop`: `main` o `extras`. Por defecto: `main`.                      |
-| `force_x86`        | NO          | Con `from = scoop`, prefiere la descarga de 32 bits sobre 64 bits. Por defecto: `false`.            |
+| `force_x86`        | NO          | Con `from = scoop`, fuerza la descarga de 32 bits ignorando la arquitectura del OS. Por defecto: `false`. |
 | `pre_update`       | NO          | Comando o script a ejecutar antes de iniciar la actualización.                                      |
 | `post_update`      | NO          | Comando o script a ejecutar inmediatamente tras completar la descarga.                              |
 | `post_unpack`      | NO          | Comando o script a ejecutar tras descomprimir el archivo descargado.                                |
@@ -84,7 +84,7 @@ Los valores utilizados para la configuración son:
 4. **Modo Scoop (`from = scoop`)**
    - Obtiene el manifest JSON desde `https://raw.githubusercontent.com/ScoopInstaller/{Bucket}/master/bucket/{app}.json`.
    - Lee `version` del root del manifest y compara con `local_version`.
-   - Resuelve la URL desde `architecture.64bit.url` (o `32bit` si `force_x86 = true`), con fallback al campo `url` del root.
+   - Resuelve la URL desde `architecture.64bit.url` o `architecture.32bit.url` según la arquitectura del OS detectada. `force_x86 = true` fuerza siempre `32bit` ignorando la detección. Fallback al campo `url` del root si la key de arquitectura no existe.
    - Si el campo URL es una lista, usa el primer elemento.
 
 5. **En otro caso**
