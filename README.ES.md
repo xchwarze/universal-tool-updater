@@ -115,6 +115,7 @@ El actualizador ofrece un conjunto flexible de parámetros para controlar su com
 | `-rt SEGUNDOS, --request-timeout SEGUNDOS`                         | Timeout en segundos para las peticiones HTTP. Por defecto: `30`.                                        |
 | `-dre N, --download-retries N`                                     | Cantidad de reintentos ante fallo de descarga (backoff exponencial). Por defecto: `3`.                  |
 | `-pw N, --parallel-workers N`                                      | Cantidad de herramientas a actualizar en paralelo. Por defecto: `1` (secuencial).                       |
+| `-ds N, --download-segments N`                                     | Cantidad de segmentos para descargas aceleradas. Por defecto: `3`.                                      |
 
 
 ## Ejemplos
@@ -174,5 +175,5 @@ SCHTASKS /DELETE /TN "ToolkitUpdater"
 
 ```bash
 pip install pyinstaller
-pyinstaller --onefile UpdateManager.py --icon=../assets/appicon.ico
+pyinstaller --onefile UpdateManager.py --icon=../assets/appicon.ico --collect-all aiohttp --collect-all aiofiles
 ```

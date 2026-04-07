@@ -57,6 +57,7 @@ class Updater:
             user_agent=self.request_user_agent,
             update_folder_path=self.update_folder_path,
             download_retries=updater_setup.get('download_retries', 3),
+            download_segments=updater_setup.get('download_segments', 3),
             request_timeout=updater_setup.get('request_timeout', 30),
         )
         self.packer = Packer(

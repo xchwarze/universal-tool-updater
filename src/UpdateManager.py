@@ -255,11 +255,22 @@ class UpdateManager:
             type=int,
             default=self.get_argparse_default_int('parallel_workers', 1)
         )
+        parser.add_argument(
+            '-ds',
+            '--download-segments',
+            dest='download_segments',
+            help='Number of segments for accelerated downloads.',
+            type=int,
+            default=self.get_argparse_default_int('download_segments', 3)
+        )
 
         self.arguments = parser.parse_args()
 
         if self.arguments.parallel_workers < 1:
             parser.error('--parallel-workers must be at least 1')
+
+        if self.arguments.download_segments < 1:
+            parser.error('--download-segments must be at least 1')
 
     def update_default_params(self):
         """
@@ -278,6 +289,7 @@ class UpdateManager:
         self.config_manager.set_config(self.config_section_defaults, 'request_timeout', str(self.arguments.request_timeout))
         self.config_manager.set_config(self.config_section_defaults, 'download_retries', str(self.arguments.download_retries))
         self.config_manager.set_config(self.config_section_defaults, 'parallel_workers', str(self.arguments.parallel_workers))
+        self.config_manager.set_config(self.config_section_defaults, 'download_segments', str(self.arguments.download_segments))
 
         logging.info(colorama.Fore.GREEN + 'Update default params successful')
 
