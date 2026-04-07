@@ -163,7 +163,7 @@ class Packer:
         logging.info(f'{self.tool_name}: merging with "{old_compress_name}"')
 
         # unpack old version
-        old_tool_unpack_folder = str(old_compress_name).replace('.7z', '')
+        old_tool_unpack_folder = pathlib.Path(old_compress_name).stem
         old_tool_unpack_path = pathlib.Path(self.update_folder_path).joinpath(old_tool_unpack_folder)
         self.unpack(old_tool_compress_path, '.7z', old_tool_unpack_path, None)
 

@@ -36,13 +36,16 @@ class ScriptExecutor:
         if script_type in self.valid_types and script_type in self.tool_config:
             script = self.tool_config[script_type]
             params = script_params.values() if script_params else []
-
             logging.info(f'{self.tool_name}: exec {script_type} "{script}"')
             logging.info(colorama.Fore.BLUE + '------------------------------')
+
             try:
-                subprocess.run([script, *params])
+                subprocess.run([script, *params], check=True)
+            except subprocess.CalledProcessError as error:
+                logging.error(f'{self.tool_name}: {script_type} script exited with code {error.returncode}')
             except Exception as exception:
                 logging.error(f'{self.tool_name}: failed to execute {script_type} script: {exception}')
+
             logging.info(colorama.Fore.BLUE + '------------------------------')
 
     def execute_global_script(self, script_params):
@@ -54,7 +57,10 @@ class ScriptExecutor:
         if 'global_post_update' in self.tool_config:
             script = self.tool_config['global_post_update']
             logging.info(f'{self.tool_name}: exec global script "{script}"')
+
             try:
-                subprocess.run([script, *script_params.values()])
+                subprocess.run([script, *script_params.values()], check=True)
+            except subprocess.CalledProcessError as error:
+                logging.error(f'{self.tool_name}: global script exited with code {error.returncode}')
             except Exception as exception:
                 logging.error(f'{self.tool_name}: failed to execute global script: {exception}')

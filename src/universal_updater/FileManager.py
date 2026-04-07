@@ -55,11 +55,15 @@ class FileManager:
         :param tool_unpack_path: Path-like where the tool is unpacked
         :return: Dict with 'folder_path' and 'unpack_path' as pathlib.Path objects
         """
-        # dirty hack for correct folders structure
+        # If the archive contains a single non-empty root directory, descend into it.
+        # This handles the common case where a zip/7z wraps everything inside one folder.
+        # A single file (not a directory) is left as-is to avoid incorrectly flattening
+        # archives that legitimately contain only one file at the root.
         folder_list = os.listdir(tool_unpack_path)
-        folder_sample = pathlib.Path(tool_unpack_path).joinpath(folder_list[0])
-        if len(folder_list) == 1 and os.path.isdir(folder_sample):
-            tool_unpack_path = folder_sample
+        if len(folder_list) == 1:
+            folder_sample = pathlib.Path(tool_unpack_path).joinpath(folder_list[0])
+            if folder_sample.is_dir() and any(folder_sample.iterdir()):
+                tool_unpack_path = folder_sample
 
         # tool folder
         tool_folder_path = self.get_tool_install_path()
