@@ -13,16 +13,18 @@ class Scraper:
     Handles all scraping tasks for the Updater.
     """
 
-    def __init__(self, force_download, use_github_api, user_agent):
+    def __init__(self, force_download, use_github_api, user_agent, request_timeout=30):
         """
         Initialize the Scraper with necessary configurations.
 
         :param use_github_api: Boolean to determine if GitHub API should be used
         :param user_agent: User agent string for HTTP requests
+        :param request_timeout: Timeout in seconds for HTTP requests
         """
         self.user_agent = user_agent
         self.force_download = force_download
         self.use_github_api = use_github_api
+        self.request_timeout = request_timeout
         self.tool_name = ""
         self.tool_config = {}
         self.github_version_check = 'https://github.com/{0}/releases.atom'
@@ -54,7 +56,7 @@ class Scraper:
             headers = {'User-Agent': self.user_agent}
 
         try:
-            response = requests.get(url, headers=headers)
+            response = requests.get(url, headers=headers, timeout=self.request_timeout)
             response.raise_for_status()
             return response
         except Exception as exception:
@@ -185,7 +187,7 @@ class Scraper:
 
         try:
             headers = {'User-Agent': self.user_agent}
-            http_response = requests.head(update_url, headers=headers)
+            http_response = requests.head(update_url, headers=headers, timeout=self.request_timeout)
             http_response.raise_for_status()
             logging.debug(f'{self.tool_name}: HTTP headers fetched, extracting version.')
         except Exception as exception:

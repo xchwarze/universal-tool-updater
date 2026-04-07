@@ -36,7 +36,8 @@ class Updater:
         self.tool_name = ""
         self.tool_config = {}
         self.script_path = os.fsdecode(os.getcwdb())
-        self.update_folder_path = pathlib.Path(self.script_path).joinpath('updates')
+        self.updates_root = pathlib.Path(self.script_path) / 'updates'
+        self.update_folder_path = self.updates_root
         self.request_user_agent = 'curl/7.84.0'
         self.config_manager = config_manager
         self.disable_install_check = updater_setup.get('disable_install_check', False)
@@ -45,11 +46,13 @@ class Updater:
             force_download=updater_setup.get('force_download', False),
             use_github_api=updater_setup.get('use_github_api', ''),
             user_agent=self.request_user_agent,
+            request_timeout=updater_setup.get('request_timeout', 30),
         )
         self.downloader = Downloader(
             disable_progress=updater_setup.get('disable_progress', False),
             user_agent=self.request_user_agent,
             update_folder_path=self.update_folder_path,
+            download_retries=updater_setup.get('download_retries', 3),
         )
         self.packer = Packer(
             save_format_type=updater_setup.get('save_format_type', 'full'),
@@ -97,10 +100,8 @@ class Updater:
         """
         # create updates folder if don't exist
         if not pathlib.Path.exists(self.update_folder_path):
-            pathlib.Path.mkdir(self.update_folder_path)
+            pathlib.Path.mkdir(self.update_folder_path, parents=True)
 
-        # download
-        self.cleanup_update_folder()
         return self.downloader.download_from_web(self.tool_name, download_url)
 
     def processing_tool_step(self, file_path, download_version):
@@ -148,6 +149,13 @@ class Updater:
         if pathlib.Path.exists(self.update_folder_path):
             Helpers.cleanup_folder(self.update_folder_path)
 
+    def cleanup_updates_root(self):
+        """
+        Remove the entire updates root folder.
+        """
+        if self.updates_root.exists():
+            Helpers.delete_folder(self.updates_root)
+
     def update(self, tool_name):
         """
         Perform the update process for a given tool.
@@ -159,6 +167,9 @@ class Updater:
         # tool data setup
         self.tool_name = tool_name
         self.tool_config = self.config_manager.get_tool_config(tool_name)
+        self.update_folder_path = self.updates_root / tool_name
+        self.downloader.update_folder_path = self.update_folder_path
+        self.packer.update_folder_path = self.update_folder_path
         self.scraper.tool_setup(self.tool_name, self.tool_config)
         self.packer.tool_setup(self.tool_name, self.tool_config)
         self.file_manager.tool_setup(self.tool_name, self.tool_config)
@@ -167,22 +178,25 @@ class Updater:
         # execute checks and scripts
         self.pre_update()
 
-        # generate version and download data
-        logging.debug(f'{self.tool_name}: start "scrape_step"')
-        scrape_data = self.scraper.scrape_step()
-        if scrape_data is False:
-            return False
+        try:
+            # generate version and download data
+            logging.debug(f'{self.tool_name}: start "scrape_step"')
+            scrape_data = self.scraper.scrape_step()
+            if scrape_data is False:
+                return False
 
-        # download and process file
-        logging.debug(f'{self.tool_name}: start "download_step"')
-        update_file_path = self.download_step(scrape_data['download_url'])
+            # download and process file
+            logging.debug(f'{self.tool_name}: start "download_step"')
+            update_file_path = self.download_step(scrape_data['download_url'])
 
-        logging.debug(f'{self.tool_name}: start "processing_tool_step"')
-        processing_info = self.processing_tool_step(update_file_path, scrape_data['download_version'])
+            logging.debug(f'{self.tool_name}: start "processing_tool_step"')
+            processing_info = self.processing_tool_step(update_file_path, scrape_data['download_version'])
 
-        # update complete
-        logging.debug(f'{self.tool_name}: start "post_update"')
-        self.post_update(scrape_data, processing_info)
+            # update complete
+            logging.debug(f'{self.tool_name}: start "post_update"')
+            self.post_update(scrape_data, processing_info)
 
-        logging.info(f'{self.tool_name}: update complete')
-        return True
+            logging.info(f'{self.tool_name}: update complete')
+            return True
+        finally:
+            self.cleanup_update_folder()

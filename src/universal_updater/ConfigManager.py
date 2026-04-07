@@ -1,4 +1,5 @@
 import configparser
+import threading
 import colorama
 
 
@@ -16,6 +17,7 @@ class ConfigManager:
         """
         self.config = configparser.ConfigParser()
         self.config_file_name = config_file_name
+        self._lock = threading.Lock()
         self.config.read(self.config_file_name)
 
     def get_config(self, section, key, fallback=None):
@@ -87,5 +89,6 @@ class ConfigManager:
         """
         Save the current configuration to file.
         """
-        with open(self.config_file_name, 'w') as config_file:
-            self.config.write(config_file)
+        with self._lock:
+            with open(self.config_file_name, 'w') as config_file:
+                self.config.write(config_file)

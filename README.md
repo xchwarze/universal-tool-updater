@@ -99,6 +99,9 @@ The updater provides a flexible set of parameters to control its behavior:
 | `-udp, --update-default-params`                                    | Update the default parameters stored in the configuration.                                 |
 | `-dmc, --disable-mutex-check`                                      | Allow multiple instances of the script to run simultaneously by disabling the mutex check. |
 | `-d, --debug`                                                      | Enable detailed debug output for troubleshooting.                                          |
+| `-rt SECONDS, --request-timeout SECONDS`                           | Timeout in seconds for HTTP requests. Default: `30`.                                       |
+| `-dre N, --download-retries N`                                     | Number of retry attempts on download failure (exponential backoff). Default: `3`.          |
+| `-pw N, --parallel-workers N`                                      | Number of tools to update in parallel. Default: `1` (sequential).                         |
 
 ## Examples
 

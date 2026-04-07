@@ -2,9 +2,11 @@ import argparse
 import signal
 import sys
 import os
+import threading
 import colorama
 import logging
 import psutil
+from concurrent.futures import ThreadPoolExecutor
 
 from universal_updater.Updater import Updater
 from universal_updater.ConfigManager import ConfigManager
@@ -208,6 +210,30 @@ class UpdateManager:
             action='store_true',
             default=False
         )
+        parser.add_argument(
+            '-rt',
+            '--request-timeout',
+            dest='request_timeout',
+            help='Timeout in seconds for HTTP requests.',
+            type=int,
+            default=int(self.get_argparse_default('request_timeout', 30, is_bool=False))
+        )
+        parser.add_argument(
+            '-dre',
+            '--download-retries',
+            dest='download_retries',
+            help='Number of retry attempts on download failure.',
+            type=int,
+            default=int(self.get_argparse_default('download_retries', 3, is_bool=False))
+        )
+        parser.add_argument(
+            '-pw',
+            '--parallel-workers',
+            dest='parallel_workers',
+            help='Number of tools to update in parallel.',
+            type=int,
+            default=int(self.get_argparse_default('parallel_workers', 1, is_bool=False))
+        )
 
         self.arguments = parser.parse_args()
 
@@ -225,6 +251,9 @@ class UpdateManager:
         self.config_manager.set_config(self.config_section_defaults, 'disable_progress', str(self.arguments.disable_progress))
         self.config_manager.set_config(self.config_section_defaults, 'save_format_type', self.arguments.save_format_type)
         self.config_manager.set_config(self.config_section_defaults, 'use_github_api', self.arguments.use_github_api)
+        self.config_manager.set_config(self.config_section_defaults, 'request_timeout', str(self.arguments.request_timeout))
+        self.config_manager.set_config(self.config_section_defaults, 'download_retries', str(self.arguments.download_retries))
+        self.config_manager.set_config(self.config_section_defaults, 'parallel_workers', str(self.arguments.parallel_workers))
 
         logging.info(colorama.Fore.GREEN + 'Update default params successful')
 
@@ -297,25 +326,36 @@ class UpdateManager:
             # add missing new line separator
             logging.info("\n")
 
-    def handle_tool_updates(self, updater, update_list):
+    def handle_tool_updates(self, updater_setup, update_list):
         """
         Handles the update process for each tool in the update list.
 
-        :param updater: An instance of the Updater class responsible for updating tools
+        :param updater_setup: Dictionary of updater configuration settings
         :param update_list: List of tools to update
         """
         failed_updates = 0
         failed_names = []
+        lock = threading.Lock()
         total_updates = len(update_list)
+        parallel_workers = updater_setup.get('parallel_workers', 1)
         logging.info(colorama.Fore.YELLOW + '[+] Checking for tool updates:')
 
-        for name in update_list:
+        def update_tool(name):
+            nonlocal failed_updates
+            updater = Updater(
+                config_manager=self.config_manager,
+                updater_setup=updater_setup,
+            )
             try:
                 updater.update(name)
             except Exception as exception:
-                failed_updates += 1
-                failed_names.append(name)
+                with lock:
+                    failed_updates += 1
+                    failed_names.append(name)
                 logging.error(exception)
+
+        with ThreadPoolExecutor(max_workers=parallel_workers) as executor:
+            executor.map(update_tool, update_list)
 
         # add missing new line separator
         logging.info("\n")
@@ -334,15 +374,11 @@ class UpdateManager:
         """
         self.handle_auto_update()
 
-        updater = Updater(
-            config_manager=self.config_manager,
-
-            # To convert from Namespace to Dict I have to use vars()
-            updater_setup=vars(self.arguments),
-        )
+        updater_setup = vars(self.arguments)
         update_list = self.generate_update_list()
-        self.handle_tool_updates(updater, update_list)
-        updater.cleanup_update_folder()
+        self.handle_tool_updates(updater_setup, update_list)
+
+        Updater(config_manager=self.config_manager).cleanup_updates_root()
 
     def main(self):
         """

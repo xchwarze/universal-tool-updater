@@ -17,6 +17,13 @@ class Helpers:
                 file.unlink()
 
     @staticmethod
+    def delete_folder(path):
+        """
+        Delete a folder and all its contents.
+        """
+        shutil.rmtree(path, ignore_errors=True)
+
+    @staticmethod
     def is_valid_url(url: str) -> bool:
         """
         Return True if URL has a valid HTTP/S scheme and network location.

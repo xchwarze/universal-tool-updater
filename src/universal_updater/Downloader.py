@@ -1,4 +1,5 @@
 import requests
+import time
 from tqdm import tqdm
 import pathlib
 import colorama
@@ -10,17 +11,19 @@ from universal_updater.Helpers import Helpers
 class Downloader:
     """Handles file downloads."""
 
-    def __init__(self, user_agent, disable_progress, update_folder_path):
+    def __init__(self, user_agent, disable_progress, update_folder_path, download_retries=3):
         """
         Initialize with optional user_agent, disable_progress flag, and update_folder_path.
 
         :param user_agent: User agent string for HTTP requests
         :param disable_progress: Flag to disable progress bar
         :param update_folder_path: Path to the folder where updates will be saved
+        :param download_retries: Number of retry attempts on download failure
         """
         self.user_agent = user_agent
         self.disable_progress = disable_progress
         self.update_folder_path = update_folder_path
+        self.download_retries = download_retries
         self.tool_name = ""
 
     def download_file(self, url, progress_bar_desc):
@@ -75,13 +78,16 @@ class Downloader:
         file_name = Helpers.get_filename_from_url(download_url)
         logging.info(f'{self.tool_name}: downloading update "{file_name}"')
 
-        try:
-            file_path = self.download_file(
-                url=download_url,
-                progress_bar_desc=tool_name,
-            )
-        except Exception as exception:
-            logging.error(f'{self.tool_name}: download url {download_url}')
-            raise Exception(colorama.Fore.RED + f'{self.tool_name}: Error {exception}')
+        last_exception = None
+        for attempt in range(self.download_retries):
+            try:
+                return self.download_file(url=download_url, progress_bar_desc=tool_name)
+            except Exception as exception:
+                last_exception = exception
+                if attempt < self.download_retries - 1:
+                    wait = 2 ** attempt
+                    logging.warning(f'{self.tool_name}: download failed (attempt {attempt + 1}/{self.download_retries}), retrying in {wait}s...')
+                    logging.error(f'{self.tool_name}: download url {download_url}')
+                    time.sleep(wait)
 
-        return file_path
+        raise Exception(colorama.Fore.RED + f'{self.tool_name}: Error {last_exception}')
