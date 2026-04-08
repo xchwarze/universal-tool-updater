@@ -199,7 +199,8 @@ class Packer:
         tool_repack_path = pathlib.Path(unpack_folder_path).parent.joinpath(save_compress_name)
 
         with py7zr.SevenZipFile(tool_repack_path, 'w') as archive:
-            archive.writeall(tool_unpack_path, arcname='')
+            for item in sorted(pathlib.Path(tool_unpack_path).iterdir()):
+                archive.writeall(item, item.name)
 
         shutil.copy(tool_repack_path, tool_folder_path)
 
