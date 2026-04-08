@@ -347,9 +347,10 @@ class UpdateManager:
         """
         Handles the auto-update logic for the script itself.
         """
+        auto_update_setup = {**vars(self.arguments), 'force_download': False}
         updater = Updater(
             config_manager=self.config_manager,
-            updater_setup=vars(self.arguments),
+            updater_setup=auto_update_setup,
         )
         if self.config_section_self_update in self.config_manager.get_sections() and \
                 not self.arguments.disable_self_update:
