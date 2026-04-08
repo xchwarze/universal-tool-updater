@@ -77,28 +77,43 @@ class Packer:
         with py7zr.SevenZipFile(file_path, 'r', password=file_pass) as compressed:
             compressed.extractall(unpack_path)
 
-    def unpack(self, file_path, file_ext, unpack_path, file_pass):
+    def unpack(self, file_path, unpack_path, file_pass=None):
         """
         Unpack a compressed file based on its extension.
 
         :param file_path: Path to the compressed file
-        :param file_ext: File extension (.zip, .rar, .7z)
         :param unpack_path: Destination path to unpack
         :param file_pass: Password for the compressed file, default is None
-        :return: None
-        :raises: Exception if file extension is not supported
+        :return: True if unpacked, False if extension not supported
+        :raises Exception: If an error occurs during unpacking
         """
+        file_ext = pathlib.Path(file_path).suffix
+        if file_ext not in self.valid_extensions:
+            return False
+
         try:
             if file_ext == '.zip':
-                return self.unpack_zip(file_path, unpack_path, file_pass)
+                self.unpack_zip(file_path, unpack_path, file_pass)
             elif file_ext == '.rar':
-                return self.unpack_rar(file_path, unpack_path, file_pass)
+                self.unpack_rar(file_path, unpack_path, file_pass)
             elif file_ext == '.7z':
-                return self.unpack_7z(file_path, unpack_path, file_pass)
+                self.unpack_7z(file_path, unpack_path, file_pass)
         except Exception as error:
             raise Exception(colorama.Fore.RED + f'An error occurred during unpacking: {error}')
 
-        raise Exception(colorama.Fore.RED + f'{file_ext} extension not accepted by internal unpacker')
+        return True
+
+    def unpack_nested(self, unpack_path):
+        """
+        Check for and unpack nested compressed files (zip inside a zip).
+
+        :param unpack_path: Path to the unpacked folder
+        """
+        folder_list = os.listdir(unpack_path)
+        if len(folder_list) == 1:
+            nested_file = pathlib.Path(unpack_path).joinpath(folder_list[0])
+            if self.unpack(nested_file, unpack_path):
+                os.remove(nested_file)
 
     def unpack_step(self, file_path):
         """
@@ -107,25 +122,14 @@ class Packer:
         :param file_path: Path to the compressed file
         :return: Path to the unpacked folder
         """
-        file_ext = pathlib.Path(file_path).suffix
         unpack_path = pathlib.Path(file_path).parent
+        update_file_pass = self.tool_config.get('update_file_pass', None)
 
-        if file_ext in self.valid_extensions:
-            update_file_pass = self.tool_config.get('update_file_pass', None)
-            self.unpack(file_path, file_ext, unpack_path, update_file_pass)
-        else:
-            # this case is because there are times when the downloaded program is not compressed and is an exe
-            pathlib.Path(unpack_path).mkdir(exist_ok=True)
-            shutil.copy(file_path, unpack_path)
+        if self.unpack(file_path, unpack_path, update_file_pass):
+            os.remove(file_path)
 
-        # dirty hack for correct zip inside a zip...
-        folder_list = os.listdir(unpack_path)
-        if len(folder_list) == 1:
-            folder_sample = pathlib.Path(unpack_path).joinpath(folder_list[0])
-            file_ext = pathlib.Path(folder_sample).suffix
-            if file_ext in self.valid_extensions:
-                self.unpack(folder_sample, file_ext, unpack_path, None)
-                os.remove(folder_sample)
+            # dirty hack for correct zip inside a zip...
+            self.unpack_nested(unpack_path)
 
         return unpack_path
 
@@ -165,7 +169,7 @@ class Packer:
         # unpack old version
         old_tool_unpack_folder = pathlib.Path(old_compress_name).stem
         old_tool_unpack_path = pathlib.Path(self.update_folder_path).joinpath(old_tool_unpack_folder)
-        self.unpack(old_tool_compress_path, '.7z', old_tool_unpack_path, None)
+        self.unpack(old_tool_compress_path, old_tool_unpack_path)
 
         # merge
         shutil.copytree(tool_unpack_path, old_tool_unpack_path, copy_function=shutil.copy, dirs_exist_ok=True)
@@ -192,7 +196,7 @@ class Packer:
             Helpers.cleanup_folder(tool_folder_path)
 
         save_compress_name = self.repack_save_compress_name(self.tool_name, version)
-        tool_repack_path = pathlib.Path(pathlib.Path(unpack_folder_path).parent).joinpath(save_compress_name)
+        tool_repack_path = pathlib.Path(unpack_folder_path).parent.joinpath(save_compress_name)
 
         with py7zr.SevenZipFile(tool_repack_path, 'w') as archive:
             archive.writeall(tool_unpack_path, arcname='')
