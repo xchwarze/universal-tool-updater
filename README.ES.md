@@ -58,6 +58,7 @@ Los valores utilizados para la configuración son:
 | `force_x86`        | NO          | Con `from = scoop`, fuerza la descarga de 32 bits ignorando la arquitectura del OS. Por defecto: `false`. |
 | `pre_update`       | NO          | Comando o script a ejecutar antes de iniciar la actualización.                                      |
 | `post_update`      | NO          | Comando o script a ejecutar inmediatamente tras completar la descarga.                              |
+| `disable_content_type_check` | NO | Desactiva la validación de Content-Type en las descargas. Por defecto se rechazan respuestas con Content-Type no binario (ej. `text/html`). Poner `true` para omitir este chequeo. |
 | `post_unpack`      | NO          | Comando o script a ejecutar tras descomprimir el archivo descargado.                                |
 
 

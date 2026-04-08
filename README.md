@@ -58,6 +58,7 @@ The values used for configuration are:
 | `force_x86`        | NO        | When `from = scoop`, force the 32-bit download regardless of OS architecture. Default: `false`.                |
 | `pre_update`       | NO        | Script or command to run before performing the update.                                                         |
 | `post_update`      | NO        | Script or command to run immediately after the update download completes.                                      |
+| `disable_content_type_check` | NO | Disable Content-Type validation on downloads. By default the downloader rejects responses that return a non-binary Content-Type (e.g. `text/html`). Set to `true` to skip this check. |
 | `post_unpack`      | NO        | Script or command to run after unpacking the downloaded archive.                                               |
 
 

@@ -11,6 +11,13 @@ from universal_updater.Helpers import Helpers
 class Downloader:
     """Handles file downloads."""
 
+    INVALID_CONTENT_TYPES = {
+        'text/html',
+        'text/xml',
+        'application/json',
+        'application/xml',
+    }
+
     def __init__(self, user_agent, disable_progress, update_folder_path, download_retries=3, download_segments=3, request_timeout=30):
         """
         Initialize with optional user_agent, disable_progress flag, and update_folder_path.
@@ -30,17 +37,40 @@ class Downloader:
         self.request_timeout = request_timeout
         self.tool_name = ""
 
-    def resolve_filename(self, url):
+    def validate_content_type(self, content_type):
+        """
+        Validate the Content-Type header to ensure the response is a downloadable file.
+        Only allows known binary and archive content types.
+
+        :param content_type: Content-Type header value from the response
+        :raises Exception: If the content type is not in the whitelist
+        """
+        if not content_type:
+            return
+
+        mime_type = content_type.split(';')[0].strip().lower()
+        if mime_type in self.INVALID_CONTENT_TYPES:
+            raise Exception(
+                colorama.Fore.RED + f'{self.tool_name}: invalid download, '
+                f'server returned Content-Type "{mime_type}" instead of a binary or archive file'
+            )
+
+    def resolve_filename(self, url, check_content_type=True):
         """
         Resolve the real filename via HEAD request.
         Handles redirects and Content-Disposition headers.
 
         :param url: Original download URL
+        :param check_content_type: Flag to validate the Content-Type header
         :return: Resolved filename string
         """
         response = requests.head(url, headers={'User-Agent': self.user_agent},
                                          allow_redirects=True, timeout=self.request_timeout)
         response.raise_for_status()
+
+        # validate Content-Type to detect invalid downloads (e.g. error pages)
+        if check_content_type:
+            self.validate_content_type(response.headers.get('content-type', ''))
 
         # try to get filename from Content-Disposition header
         content_disposition = response.headers.get('content-disposition', '')
@@ -88,18 +118,19 @@ class Downloader:
 
         return dest_path
 
-    def download_from_web(self, tool_name, download_url):
+    def download_from_web(self, tool_name, download_url, check_content_type=True):
         """
         Perform a download step for a given tool.
 
         :param tool_name: Name of the tool
         :param download_url: URL from which to download the tool
+        :param check_content_type: Flag to validate the Content-Type header
         :return: Path where the file has been saved
         """
         self.tool_name = tool_name
 
         # resolve real filename (handles redirects and Content-Disposition)
-        file_name = self.resolve_filename(download_url)
+        file_name = self.resolve_filename(download_url, check_content_type)
         logging.info(f'{self.tool_name}: downloading update "{file_name}"')
 
         return self.download_file(url=download_url, file_name=file_name)

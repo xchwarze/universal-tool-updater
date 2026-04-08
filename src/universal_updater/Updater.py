@@ -108,7 +108,8 @@ class Updater:
         if not pathlib.Path.exists(self.update_folder_path):
             pathlib.Path.mkdir(self.update_folder_path, parents=True)
 
-        return self.downloader.download_from_web(self.tool_name, download_url)
+        check_content_type = not self.tool_config.get('disable_content_type_check', False)
+        return self.downloader.download_from_web(self.tool_name, download_url, check_content_type)
 
     def processing_tool_step(self, file_path, download_version):
         """
