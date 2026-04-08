@@ -174,6 +174,10 @@ SCHTASKS /DELETE /TN "ToolkitUpdater"
 ## Compilar a exe
 
 ```bash
+cd src
+
+pip install -r requirements.txt
 pip install pyinstaller
+
 pyinstaller --onefile UpdateManager.py --icon=../assets/appicon.ico --collect-all aiohttp --collect-all aiofiles
 ```
