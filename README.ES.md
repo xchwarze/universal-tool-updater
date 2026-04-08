@@ -56,10 +56,30 @@ Los valores utilizados para la configuración son:
 | `merge`            | NO          | Si está definido, fusiona los archivos nuevos con los existentes.                                   |
 | `scoop_bucket`     | NO          | Bucket de Scoop cuando `from = scoop`: `main` o `extras`. Por defecto: `main`.                      |
 | `force_x86`        | NO          | Con `from = scoop`, fuerza la descarga de 32 bits ignorando la arquitectura del OS. Por defecto: `false`. |
+| `disable_repack`   | NO          | Desactiva el reempaquetado para esta herramienta específica. Sobreescribe el flag global `--disable-repack`. Por defecto: `false`. |
+| `disable_content_type_check` | NO | Desactiva la validación de Content-Type en las descargas. Por defecto se rechazan respuestas con Content-Type no binario (ej. `text/html`). Poner `true` para omitir este chequeo. |
 | `pre_update`       | NO          | Comando o script a ejecutar antes de iniciar la actualización.                                      |
 | `post_update`      | NO          | Comando o script a ejecutar inmediatamente tras completar la descarga.                              |
-| `disable_content_type_check` | NO | Desactiva la validación de Content-Type en las descargas. Por defecto se rechazan respuestas con Content-Type no binario (ej. `text/html`). Poner `true` para omitir este chequeo. |
 | `post_unpack`      | NO          | Comando o script a ejecutar tras descomprimir el archivo descargado.                                |
+
+
+## Configuración Global
+
+Los parámetros por defecto se pueden persistir en la sección `[UpdaterConfig]` de `tools.ini`. Estos valores se usan como defaults para los argumentos de línea de comandos y se guardan con `--update-default-params`.
+
+| Nombre              | Descripción                                                                                     |
+|---------------------|-------------------------------------------------------------------------------------------------|
+| `disable_clean`     | Evita limpiar la carpeta de herramientas durante las actualizaciones. Por defecto: `true`.       |
+| `disable_repack`    | Impide el reempaquetado de herramientas tras la actualización. Por defecto: `true`.              |
+| `disable_install_check` | Omite la verificación de si las herramientas están instaladas. Por defecto: `false`.         |
+| `disable_progress`  | Desactiva la barra de progreso de descarga. Por defecto: `false`.                               |
+| `save_format_type`  | Formato para guardar actualizaciones comprimidas: `full`, `version` o `name`. Por defecto: `full`. |
+| `use_github_api`    | Token de la API de GitHub para peticiones autenticadas. Por defecto: vacío.                     |
+| `request_timeout`   | Timeout en segundos para peticiones HTTP. Por defecto: `30`.                                    |
+| `download_retries`  | Cantidad de reintentos ante fallo de descarga. Por defecto: `3`.                                |
+| `parallel_workers`  | Cantidad de herramientas a actualizar en paralelo. Por defecto: `1`.                            |
+| `download_segments` | Cantidad de segmentos para descargas aceleradas. Por defecto: `3`.                              |
+| `global_post_update` | Script o comando a ejecutar como hook global post-update. Recibe nombre de herramienta, carpeta y nombre del archivo comprimido. |
 
 
 ## Estrategia de descarga
