@@ -108,7 +108,7 @@ class Packer:
         :return: Path to the unpacked folder
         """
         file_ext = pathlib.Path(file_path).suffix
-        unpack_path = pathlib.Path(file_path).with_suffix('')
+        unpack_path = pathlib.Path(file_path).parent
 
         if file_ext in self.valid_extensions:
             update_file_pass = self.tool_config.get('update_file_pass', None)
