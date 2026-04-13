@@ -473,14 +473,19 @@ class Scraper:
         """
         Execute a specific script for a given tool based on tool_config.
 
-        :return: Dictionary containing 'download_version' and 'download_url'
+        :return: Dictionary containing 'download_version', 'download_url' and 'cookies'
         """
         from_url = self.tool_config.get('from', 'web')
         if from_url == 'github':
-            return self.scrape_github()
+            result = self.scrape_github()
         elif from_url == 'http':
-            return self.scrape_http()
+            result = self.scrape_http()
         elif from_url == 'scoop':
-            return self.scrape_scoop()
+            result = self.scrape_scoop()
+        else:
+            result = self.scrape_web()
 
-        return self.scrape_web()
+        if result:
+            result['cookies'] = dict(self.session.cookies)
+
+        return result

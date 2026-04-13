@@ -97,11 +97,12 @@ class Updater:
         self.script_executor.execute_script('post_update', processing_info)
         self.script_executor.execute_global_script(processing_info)
 
-    def download_step(self, download_url):
+    def download_step(self, download_url, cookies=None):
         """
         Download the tool from the given URL.
 
         :param download_url: URL to download the tool from
+        :param cookies: Optional cookies dict from the scrape session
         :return: Path to the downloaded file
         """
         # create updates folder if don't exist
@@ -109,7 +110,7 @@ class Updater:
             pathlib.Path.mkdir(self.update_folder_path, parents=True)
 
         check_content_type = not self.tool_config.get('disable_content_type_check', False)
-        return self.downloader.download_from_web(self.tool_name, download_url, check_content_type)
+        return self.downloader.download_from_web(self.tool_name, download_url, check_content_type, cookies)
 
     def processing_tool_step(self, file_path, download_version):
         """
@@ -198,7 +199,7 @@ class Updater:
 
             # download and process file
             logging.debug(f'{self.tool_name}: start "download_step"')
-            update_file_path = self.download_step(scrape_data['download_url'])
+            update_file_path = self.download_step(scrape_data['download_url'], scrape_data.get('cookies'))
 
             logging.debug(f'{self.tool_name}: start "processing_tool_step"')
             processing_info = self.processing_tool_step(update_file_path, scrape_data['download_version'])

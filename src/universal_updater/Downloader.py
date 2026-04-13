@@ -55,17 +55,18 @@ class Downloader:
                 f'server returned Content-Type "{mime_type}" instead of a binary or archive file'
             )
 
-    def resolve_filename(self, url, check_content_type=True):
+    def resolve_filename(self, url, check_content_type=True, cookies=None):
         """
         Resolve the real filename via HEAD request.
         Handles redirects and Content-Disposition headers.
 
         :param url: Original download URL
         :param check_content_type: Flag to validate the Content-Type header
+        :param cookies: Optional cookies dict to include in the request
         :return: Resolved filename string
         """
         response = requests.head(url, headers={'User-Agent': self.user_agent},
-                                         allow_redirects=True, timeout=self.request_timeout)
+                                         cookies=cookies, allow_redirects=True, timeout=self.request_timeout)
         response.raise_for_status()
 
         # validate Content-Type to detect invalid downloads (e.g. error pages)
@@ -80,12 +81,13 @@ class Downloader:
         # fallback to filename from final URL (after redirects)
         return Helpers.get_filename_from_url(response.url)
 
-    def download_file(self, url, file_name):
+    def download_file(self, url, file_name, cookies=None):
         """
         Download a file from a given URL using pypdl.
 
         :param url: URL of the file to download
         :param file_name: Resolved filename for the download
+        :param cookies: Optional cookies dict to include in the request
         :return: Path where the file has been saved
         """
         dest_path = pathlib.Path(self.update_folder_path).joinpath(file_name)
@@ -110,6 +112,7 @@ class Downloader:
             overwrite=True,
             etag_validation=False,
             headers={'User-Agent': self.user_agent},
+            cookies=cookies,
             timeout=aiohttp.ClientTimeout(total=self.request_timeout),
         )
 
@@ -118,19 +121,20 @@ class Downloader:
 
         return dest_path
 
-    def download_from_web(self, tool_name, download_url, check_content_type=True):
+    def download_from_web(self, tool_name, download_url, check_content_type=True, cookies=None):
         """
         Perform a download step for a given tool.
 
         :param tool_name: Name of the tool
         :param download_url: URL from which to download the tool
         :param check_content_type: Flag to validate the Content-Type header
+        :param cookies: Optional cookies dict to include in the request
         :return: Path where the file has been saved
         """
         self.tool_name = tool_name
 
         # resolve real filename (handles redirects and Content-Disposition)
-        file_name = self.resolve_filename(download_url, check_content_type)
+        file_name = self.resolve_filename(download_url, check_content_type, cookies)
         logging.info(f'{self.tool_name}: downloading update "{file_name}"')
 
-        return self.download_file(url=download_url, file_name=file_name)
+        return self.download_file(url=download_url, file_name=file_name, cookies=cookies)
