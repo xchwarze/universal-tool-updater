@@ -7,7 +7,7 @@ import threading
 import colorama
 import logging
 import psutil
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
 
 from universal_updater.Updater import Updater
 from universal_updater.ConfigManager import ConfigManager
@@ -29,6 +29,7 @@ class UpdateManager:
         self.config_section_defaults = 'UpdaterConfig'
         self.config_section_self_update = 'UpdaterAutoUpdater'
         self.arguments = {}
+        self.shutdown_event = threading.Event()
         self.config_manager = ConfigManager(self.config_file_name)
         colorama.init(autoreset=True)
 
@@ -51,14 +52,18 @@ class UpdateManager:
     def exit_handler(self, signum, frame):
         """
         Handles signals like SIGINT or SIGTERM for graceful exit.
+        First signal triggers graceful shutdown; second signal forces immediate exit.
 
         :param signum: Signal type (e.g., SIGINT, SIGTERM)
         :param frame: Current stack frame
         """
+        if self.shutdown_event.is_set():
+            print(colorama.Fore.RED + '\nForce shutdown!')
+            os._exit(1)
+
         signal_name = 'SIGINT' if signum == signal.SIGINT else 'SIGTERM'
-        print(colorama.Fore.YELLOW + f'{signal_name} detected. Exiting gracefully')
-        self.cleanup_mutex()
-        sys.exit(0)
+        print(colorama.Fore.YELLOW + f'\n{signal_name} detected. Shutting down gracefully... (Ctrl+C again to force)')
+        self.shutdown_event.set()
 
     def check_single_instance(self):
         """
@@ -351,6 +356,7 @@ class UpdateManager:
         updater = Updater(
             config_manager=self.config_manager,
             updater_setup=auto_update_setup,
+            shutdown_event=self.shutdown_event,
         )
         if self.config_section_self_update in self.config_manager.get_sections() and \
                 not self.arguments.disable_self_update:
@@ -382,20 +388,35 @@ class UpdateManager:
 
         def update_tool(name):
             nonlocal failed_updates
+            if self.shutdown_event.is_set():
+                return
             updater = Updater(
                 config_manager=self.config_manager,
                 updater_setup=updater_setup,
+                shutdown_event=self.shutdown_event,
             )
             try:
                 updater.update(name)
             except Exception as exception:
-                with lock:
-                    failed_updates += 1
-                    failed_names.append(name)
-                logging.error(exception)
+                if not self.shutdown_event.is_set():
+                    with lock:
+                        failed_updates += 1
+                        failed_names.append(name)
+                    logging.error(exception)
 
-        with ThreadPoolExecutor(max_workers=parallel_workers) as executor:
-            executor.map(update_tool, update_list)
+        executor = ThreadPoolExecutor(max_workers=parallel_workers)
+        pending = {executor.submit(update_tool, name) for name in update_list}
+
+        try:
+            while pending:
+                done, pending = wait(pending, timeout=0.5, return_when=FIRST_COMPLETED)
+                if self.shutdown_event.is_set():
+                    break
+        finally:
+            executor.shutdown(wait=False, cancel_futures=True)
+
+        if self.shutdown_event.is_set():
+            return
 
         # add missing new line separator
         logging.info("\n")
@@ -414,11 +435,15 @@ class UpdateManager:
         """
         self.handle_auto_update()
 
+        if self.shutdown_event.is_set():
+            return
+
         updater_setup = vars(self.arguments)
         update_list = self.generate_update_list()
         self.handle_tool_updates(updater_setup, update_list)
 
-        Updater(config_manager=self.config_manager).cleanup_updates_root()
+        if not self.shutdown_event.is_set():
+            Updater(config_manager=self.config_manager).cleanup_updates_root()
 
     def main(self):
         """
