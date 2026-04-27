@@ -5,6 +5,7 @@ import colorama
 import logging
 
 from pypdl import Pypdl
+import pypdl_extend
 from universal_updater.Helpers import Helpers
 
 
@@ -68,6 +69,7 @@ class Downloader:
         response = requests.head(url, headers={'User-Agent': self.user_agent},
                                          cookies=cookies, allow_redirects=True, timeout=self.request_timeout)
         response.raise_for_status()
+        logging.debug("HEAD %s -> status=%s headers=%s", url, response.status_code, dict(response.headers))
 
         # validate Content-Type to detect invalid downloads (e.g. error pages)
         if check_content_type:
