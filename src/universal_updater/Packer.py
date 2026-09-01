@@ -88,7 +88,7 @@ class Packer:
         :return: True if unpacked, False if extension not supported
         :raises Exception: If an error occurs during unpacking
         """
-        file_ext = pathlib.Path(file_path).suffix
+        file_ext = pathlib.Path(file_path).suffix.lower()
         if file_ext not in self.valid_extensions:
             return False
 
