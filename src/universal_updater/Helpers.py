@@ -1,3 +1,5 @@
+import os
+import stat
 import pathlib
 import shutil
 from urllib.parse import urlparse
@@ -6,15 +8,27 @@ from urllib.parse import urlparse
 class Helpers:
 
     @staticmethod
+    def _clear_readonly(func, path, exc_info):
+        """
+        Error handler for shutil.rmtree: clears the read-only attribute and retries.
+        """
+        os.chmod(path, stat.S_IWRITE)
+        func(path)
+
+    @staticmethod
     def cleanup_folder(path):
         """
         Clean up a folder by deleting all its contents.
         """
         for file in pathlib.Path(path).iterdir():
             if file.is_dir():
-                shutil.rmtree(file)
+                shutil.rmtree(file, onerror=Helpers._clear_readonly)
             else:
-                file.unlink()
+                try:
+                    file.unlink()
+                except PermissionError:
+                    os.chmod(file, stat.S_IWRITE)
+                    file.unlink()
 
     @staticmethod
     def delete_folder(path):
