@@ -31,11 +31,29 @@ class Helpers:
                     file.unlink()
 
     @staticmethod
-    def delete_folder(path):
+    def delete_folder(path, ignore_errors=True):
         """
-        Delete a folder and all its contents.
+        Delete a folder and all its contents. When ignore_errors is False,
+        clears the read-only attribute and retries instead of raising
+        (files extracted from some archives come out read-only on Windows).
         """
-        shutil.rmtree(path, ignore_errors=True)
+        shutil.rmtree(path, ignore_errors=ignore_errors, onerror=None if ignore_errors else Helpers._clear_readonly)
+
+    _TRUE_VALUES = {'true', '1', 'yes', 'on'}
+
+    @staticmethod
+    def config_flag(config, key, default=False):
+        """
+        Read a boolean flag from a tool_config dict. configparser values are
+        always strings, so a plain `.get(key, False)` truthy-check is wrong:
+        e.g. "disable_repack = false" in tools.ini would evaluate as True.
+        """
+        value = config.get(key)
+        if value is None:
+            return default
+        if isinstance(value, bool):
+            return value
+        return str(value).strip().lower() in Helpers._TRUE_VALUES
 
     @staticmethod
     def is_valid_url(url: str) -> bool:
