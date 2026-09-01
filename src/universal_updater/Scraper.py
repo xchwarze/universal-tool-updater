@@ -133,6 +133,10 @@ class Scraper:
 
         # regex shit
         re_version = self.tool_config.get('re_version', None)
+        if not re_version:
+            raise Exception(colorama.Fore.RED +
+                            f'{self.tool_name}: the re_version field is required for the selected mode')
+
         download_version = self.check_version_from_web(url_response.text, re_version)
         if download_version is None:
             return False
