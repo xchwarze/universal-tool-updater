@@ -85,10 +85,28 @@ class FileManager:
         logging.info(f'{self.tool_name}: saving to folder {tool_folder_path}')
 
         use_merge = self.tool_config.get('merge', None)
-        if not self.disable_clean and not use_merge:
-            Helpers.cleanup_folder(tool_folder_path)
+        if self.disable_clean or use_merge:
+            shutil.copytree(tool_unpack_path, tool_folder_path, copy_function=shutil.copy, dirs_exist_ok=True)
+            return {
+                'tool_name': self.tool_name,
+                'tool_folder': str(tool_folder_path),
+                'save_compress_name': '',
+            }
 
-        shutil.copytree(tool_unpack_path, tool_folder_path, copy_function=shutil.copy, dirs_exist_ok=True)
+        # copy into a fresh sibling staging folder first, then swap it in with renames,
+        # so a failed copy never leaves tool_folder_path empty or half-written
+        staging_path = tool_folder_path.with_name(f'.{tool_folder_path.name}.new')
+        if staging_path.exists():
+            shutil.rmtree(staging_path)
+        shutil.copytree(tool_unpack_path, staging_path, copy_function=shutil.copy)
+
+        backup_path = tool_folder_path.with_name(f'.{tool_folder_path.name}.old')
+        if backup_path.exists():
+            shutil.rmtree(backup_path)
+        if tool_folder_path.exists():
+            tool_folder_path.rename(backup_path)
+        staging_path.rename(tool_folder_path)
+        shutil.rmtree(backup_path, ignore_errors=True)
 
         return {
             'tool_name': self.tool_name,

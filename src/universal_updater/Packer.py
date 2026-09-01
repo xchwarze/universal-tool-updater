@@ -203,15 +203,15 @@ class Packer:
 
         logging.info(f'{self.tool_name}: saving to folder {tool_folder_path}')
 
-        if not self.disable_clean:
-            Helpers.cleanup_folder(tool_folder_path)
-
         save_compress_name = self.repack_save_compress_name(self.tool_name, version)
         tool_repack_path = pathlib.Path(unpack_folder_path).parent.joinpath(save_compress_name)
 
         with py7zr.SevenZipFile(tool_repack_path, 'w') as archive:
             for item in sorted(pathlib.Path(tool_unpack_path).iterdir()):
                 archive.writeall(item, item.name)
+
+        if not self.disable_clean:
+            Helpers.cleanup_folder(tool_folder_path)
 
         shutil.copy(tool_repack_path, tool_folder_path)
 
