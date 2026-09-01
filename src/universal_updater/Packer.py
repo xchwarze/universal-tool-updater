@@ -204,16 +204,32 @@ class Packer:
         logging.info(f'{self.tool_name}: saving to folder {tool_folder_path}')
 
         save_compress_name = self.repack_save_compress_name(self.tool_name, version)
-        tool_repack_path = pathlib.Path(unpack_folder_path).parent.joinpath(save_compress_name)
 
-        with py7zr.SevenZipFile(tool_repack_path, 'w') as archive:
-            for item in sorted(pathlib.Path(tool_unpack_path).iterdir()):
-                archive.writeall(item, item.name)
+        # Build the archive in an isolated temp folder unique to this run, rather than
+        # a path shared across tools (previously unpack_folder_path.parent, the common
+        # "updates" root): with save_format_type "version", two tools resolving to the
+        # same version string could race on an identical filename there. A folder under
+        # unpack_folder_path itself isn't safe either: tool_unpack_path can equal
+        # unpack_folder_path (no single wrapping folder, see
+        # FileManager.processing_tool_path), which would put the archive being written
+        # inside the very directory it's reading from.
+        repack_temp_path = pathlib.Path(tempfile.mkdtemp(
+            prefix=f'{self.tool_name}_repack_',
+            dir=pathlib.Path(unpack_folder_path).parent,
+        ))
+        try:
+            tool_repack_path = repack_temp_path.joinpath(save_compress_name)
 
-        if not self.disable_clean:
-            Helpers.cleanup_folder(tool_folder_path)
+            with py7zr.SevenZipFile(tool_repack_path, 'w') as archive:
+                for item in sorted(pathlib.Path(tool_unpack_path).iterdir()):
+                    archive.writeall(item, item.name)
 
-        shutil.copy(tool_repack_path, tool_folder_path)
+            if not self.disable_clean:
+                Helpers.cleanup_folder(tool_folder_path)
+
+            shutil.copy(tool_repack_path, tool_folder_path)
+        finally:
+            shutil.rmtree(repack_temp_path, ignore_errors=True)
 
         return {
             'tool_name': self.tool_name,
