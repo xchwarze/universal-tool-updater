@@ -181,7 +181,7 @@ anything) still smoke-tests its `from=web` scraping either way.
   `-dsu`/self-update (`[UpdaterAutoUpdater]`) is not configured in this
   battery's `tools.ini` either, so `handle_auto_update()`'s branch is
   simply skipped (not present) rather than actively tested - though it
-  goes through the exact same `Updater.update()` path already exercised
+  goes through the exact same `Updater.run()` path already exercised
   by every other tool here.
 - **The compiled PyInstaller onefile EXE** - this battery runs
   `python UpdateManager.py` directly (deliberately, see "Why the source

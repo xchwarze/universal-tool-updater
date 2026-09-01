@@ -15,6 +15,7 @@ src/
 └── universal_updater/
     ├── Updater.py                   # Core orchestrator per tool: scrape → download → unpack → install
     ├── ConfigManager.py             # Thread-safe tools.ini parser (configparser)
+    ├── HttpClient.py                # Shared session + retry-with-backoff for Scraper/Downloader
     ├── Scraper.py                   # Version/URL detection: web, github, http, scoop strategies
     ├── Downloader.py                # Multi-segment downloads (pypdl), Content-Type validation
     ├── Packer.py                    # Unpack ZIP/RAR/7z, repack to 7z, merge support
@@ -28,7 +29,7 @@ tools.ini                           # Tool definitions (one [section] per tool)
 ## Data Flow
 
 ```
-UpdateManager → ThreadPoolExecutor → Updater.update(tool_name)
+UpdateManager → ThreadPoolExecutor → Updater(config_manager, tool_name).run()
   1. ConfigManager.get_tool_config() → dict with all tool settings
   2. Scraper.scrape_step() → {download_version, download_url}
   3. Downloader.download_from_web() → file path

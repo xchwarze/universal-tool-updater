@@ -166,8 +166,8 @@ class Updater:
         Remove the entire updates root folder (relative to the current
         working directory, same place update_folder_path lives during a
         run). Static so callers don't need to construct a full Updater
-        (5 collaborators, including a requests.Session) just to rmtree
-        one folder.
+        (5 collaborators plus a shared HttpClient, and construction can
+        now raise for an unknown tool) just to rmtree one folder.
         """
         updates_root = pathlib.Path(os.getcwd()) / 'updates'
         if updates_root.exists():

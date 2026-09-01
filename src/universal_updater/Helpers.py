@@ -60,6 +60,11 @@ class Helpers:
         """
         Build the standard processing-step result dict consumed by
         Updater.post_update's hook calls.
+
+        :param tool_name: Name of the tool
+        :param tool_folder_path: Path to the tool's install folder
+        :param save_compress_name: Name of the repacked archive, if any
+        :return: Dictionary with 'tool_name', 'tool_folder' and 'save_compress_name'
         """
         return {
             'tool_name': tool_name,
