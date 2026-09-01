@@ -141,6 +141,47 @@ function Invoke-Updater {
     }
 }
 
+# Runs the Ctrl+C/graceful-shutdown scenario via shutdown_scenario.py, which
+# owns the whole spawn-child/wait/send-CTRL_C_EVENT/wait-for-exit dance
+# itself (see that script's docstring for why this can't be done reliably
+# from PowerShell directly). Mirrors Invoke-Updater's return shape so the
+# same Assert-* helpers work unchanged.
+function Invoke-ShutdownScenario {
+    param(
+        [Parameter(Mandatory = $true)][string]$Name,
+        [Parameter(Mandatory = $true)][string[]]$Tools,
+        [double]$DelaySeconds = 2.0,
+        [double]$TimeoutSeconds = 15
+    )
+
+    New-Item -ItemType Directory -Force -Path $LogsDir | Out-Null
+    $stdoutFile = Join-Path $LogsDir "$Name.stdout.log"
+    $stderrFile = Join-Path $LogsDir "$Name.stderr.log"
+    $helperScript = Join-Path $TestDir 'shutdown_scenario.py'
+
+    $argList = @($helperScript, '--scratch-dir', $ScratchDir, '--delay', $DelaySeconds, '--timeout', $TimeoutSeconds, '--tools') + $Tools
+
+    Write-Host ("  running: python shutdown_scenario.py --delay $DelaySeconds --tools " + ($Tools -join ' ')) -ForegroundColor DarkGray
+
+    $proc = Start-Process -FilePath 'python' `
+        -ArgumentList (Format-ProcessArguments $argList) `
+        -WorkingDirectory $TestDir `
+        -NoNewWindow -PassThru -Wait `
+        -RedirectStandardOutput $stdoutFile `
+        -RedirectStandardError $stderrFile
+
+    $stdout = if (Test-Path $stdoutFile) { Get-Content -Raw -Path $stdoutFile -ErrorAction SilentlyContinue } else { '' }
+    $stderr = if (Test-Path $stderrFile) { Get-Content -Raw -Path $stderrFile -ErrorAction SilentlyContinue } else { '' }
+    if (-not $stdout) { $stdout = '' }
+    if (-not $stderr) { $stderr = '' }
+
+    [PSCustomObject]@{
+        Name     = $Name
+        ExitCode = $proc.ExitCode
+        Combined = "$stdout`n$stderr"
+    }
+}
+
 # ---------------------------------------------------------------------
 # Fixture server lifecycle
 # ---------------------------------------------------------------------
@@ -527,6 +568,32 @@ try {
     $persistedFormat  = Get-ConfigValue -IniFile $IniPath -Section 'UpdaterConfig' -Key 'save_format_type'
     Assert-True ($persistedWorkers -eq '2') "s8: [UpdaterConfig] parallel_workers persisted as 2 (got '$persistedWorkers')"
     Assert-True ($persistedFormat -eq 'name') "s8: [UpdaterConfig] save_format_type persisted as name (got '$persistedFormat')"
+
+    # -------------------------------------------------------------
+    # Scenario 9: Ctrl+C mid-run stops promptly instead of finishing the batch
+    # -------------------------------------------------------------
+    Write-Section "Scenario 9: Ctrl+C (graceful shutdown) mid-run"
+    if (Test-Path (Join-Path $ScratchDir 'mutex.lock')) { Remove-Item -Force (Join-Path $ScratchDir 'mutex.lock') }
+    $r9 = Invoke-ShutdownScenario -Name 's9_shutdown' -Tools @('FixtureSlow1', 'FixtureSlow2', 'FixtureSlow3') -DelaySeconds 2.0 -TimeoutSeconds 15
+
+    Assert-True ($r9.ExitCode -eq 0) "s9: exit code is 0 (got $($r9.ExitCode))"
+    Assert-True ($r9.Combined -match 'Shutting down gracefully') "s9: graceful-shutdown message logged"
+
+    $harnessMatch = [regex]::Match($r9.Combined, 'SHUTDOWN_HARNESS: elapsed=(?<elapsed>[\d.]+) exit_code=(?<exit>\S+) timed_out=(?<timedout>\S+) mutex_cleaned=(?<mutex>\S+)')
+    Assert-True $harnessMatch.Success "s9: shutdown_scenario.py summary line present in output"
+    if ($harnessMatch.Success) {
+        $elapsed = [double]$harnessMatch.Groups['elapsed'].Value
+        # each FixtureSlow route sleeps 2s server-side; Ctrl+C is sent at t=2s
+        # (mid FixtureSlow1's response). Finishing that one response plus a
+        # prompt shutdown should land comfortably under 5s - if the process
+        # instead ran all 3 tools to completion (the pre-fix behavior) this
+        # would take 6s+ instead.
+        Assert-True ($elapsed -lt 5.0) "s9: process exited well before the full batch would finish (elapsed ${elapsed}s, expected < 5s)"
+        Assert-True ($harnessMatch.Groups['timedout'].Value -eq 'False') "s9: process exited on its own, was not force-killed after timeout"
+        Assert-True ($harnessMatch.Groups['mutex'].Value -eq 'True') "s9: mutex.lock was cleaned up after a Ctrl+C shutdown"
+    }
+    Assert-True ($r9.Combined -notmatch [regex]::Escape('FixtureSlow3: [dry-run] update available')) `
+        "s9: FixtureSlow3 (the last queued tool) never started"
 
 } finally {
     Write-Section "Cleanup"

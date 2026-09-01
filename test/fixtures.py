@@ -38,6 +38,13 @@ MERGE_NEW_VERSION = "2.0.0"
 PASSWORD_PROTECTED_PASSWORD = "fixturepw"
 RAR_VERSION = "9.9.9"
 
+# How long /release/slow*.html sleeps before responding, used by the
+# shutdown/Ctrl+C scenario to create a deterministic window: with
+# parallel_workers=1 (default) and several tools pointing at this route,
+# one tool's scrape GET is still in flight when the harness sends
+# CTRL_C_EVENT partway through, and the next tool must never start.
+SLOW_ROUTE_DELAY_SECONDS = 2.0
+
 
 # ---------------------------------------------------------------------------
 # Low level archive builders

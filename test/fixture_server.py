@@ -31,13 +31,14 @@ import fixtures
 
 
 class Asset:
-    __slots__ = ("content_type", "disposition", "body", "extra_headers")
+    __slots__ = ("content_type", "disposition", "body", "extra_headers", "delay")
 
-    def __init__(self, content_type, body, disposition=None, extra_headers=None):
+    def __init__(self, content_type, body, disposition=None, extra_headers=None, delay=0):
         self.content_type = content_type
         self.body = body
         self.disposition = disposition
         self.extra_headers = extra_headers or {}
+        self.delay = delay
 
 
 def _html(body: str) -> bytes:
@@ -121,6 +122,26 @@ def build_assets(rar_exe):
         ),
     )
 
+    # ---- shutdown/Ctrl+C scenario: slow-responding release pages --------
+    # A plain GET on the release page sleeps before responding, giving the
+    # shutdown scenario a deterministic window to send CTRL_C_EVENT while a
+    # tool's scrape is still in flight (no reliance on real network timing).
+    for n in (1, 2, 3):
+        assets[f"/release/slow{n}.html"] = Asset(
+            "text/html",
+            _html(
+                f"<html><body><h1>FixtureSlow{n}</h1>"
+                f"<p>FixtureSlow{n} version 1.0.0</p>"
+                f'<a href="download/slow{n}-v1.0.0.zip">Download</a>'
+                "</body></html>"
+            ),
+            delay=fixtures.SLOW_ROUTE_DELAY_SECONDS,
+        )
+        assets[f"/download/slow{n}-v1.0.0.zip"] = Asset(
+            "application/zip", fixtures.basic_zip_bytes(),
+            disposition=f'attachment; filename="slow{n}-v1.0.0.zip"',
+        )
+
     # ---- RAR fixture (only registered if a real Rar.exe is available) --
     assets["/release/rarfixture.html"] = Asset("text/html", _html(
         "<html><body><h1>FixtureRar</h1>"
@@ -174,6 +195,9 @@ class FixtureHandler(BaseHTTPRequestHandler):
         if asset is None:
             self.send_error(404, "Not Found")
             return
+
+        if asset.delay:
+            time.sleep(asset.delay)
 
         body = asset.body
         total = len(body)
