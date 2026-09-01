@@ -18,7 +18,7 @@ class Updater:
     repacking the tool. It also handles pre-update and post-update scripts.
     """
 
-    def __init__(self, config_manager, updater_setup=None):
+    def __init__(self, config_manager, updater_setup=None, shutdown_event=None):
         """
         Initialize the Updater class with various configurations.
 
@@ -35,6 +35,7 @@ class Updater:
         """
         if updater_setup is None:
             updater_setup = {}
+        self.shutdown_event = shutdown_event
         self.tool_name = ""
         self.tool_config = {}
         self.script_path = os.fsdecode(os.getcwdb())
@@ -164,6 +165,10 @@ class Updater:
         if self.updates_root.exists():
             Helpers.delete_folder(self.updates_root)
 
+    def _is_shutdown(self):
+        """Check if a shutdown has been requested."""
+        return self.shutdown_event is not None and self.shutdown_event.is_set()
+
     def update(self, tool_name):
         """
         Perform the update process for a given tool.
@@ -187,10 +192,16 @@ class Updater:
         self.pre_update()
 
         try:
+            if self._is_shutdown():
+                return False
+
             # generate version and download data
             logging.debug(f'{self.tool_name}: start "scrape_step"')
             scrape_data = self.scraper.scrape_step()
             if scrape_data is False:
+                return False
+
+            if self._is_shutdown():
                 return False
 
             if self.dry_run:
@@ -201,8 +212,14 @@ class Updater:
             logging.debug(f'{self.tool_name}: start "download_step"')
             update_file_path = self.download_step(scrape_data['download_url'], scrape_data.get('cookies'))
 
+            if self._is_shutdown():
+                return False
+
             logging.debug(f'{self.tool_name}: start "processing_tool_step"')
             processing_info = self.processing_tool_step(update_file_path, scrape_data['download_version'])
+
+            if self._is_shutdown():
+                return False
 
             # update complete
             logging.debug(f'{self.tool_name}: start "post_update"')
