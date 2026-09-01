@@ -100,6 +100,7 @@ class Downloader:
         :return: Path where the file has been saved
         """
         dest_path = pathlib.Path(self.update_folder_path).joinpath(file_name)
+        self._clear_stale_download_state(dest_path)
 
         # create a logger adapter to prefix pypdl messages with the tool name
         # this propagates to the root logger, so ColoredFormatter applies automatically
@@ -129,6 +130,22 @@ class Downloader:
             raise Exception(colorama.Fore.RED + f'{self.tool_name}: download failed')
 
         return dest_path
+
+    def _clear_stale_download_state(self, dest_path):
+        """
+        Remove any pypdl progress/segment files left over from a previous aborted
+        run for this exact destination. pypdl runs here with etag_validation=False,
+        so it will otherwise trust a leftover "<file>.json" progress record blindly
+        and resume-append onto stale/partial segment files instead of starting
+        fresh — this app never intends to resume a download across invocations.
+        """
+        if not dest_path.parent.exists():
+            return
+
+        prefix = dest_path.name + '.'
+        for sibling in dest_path.parent.iterdir():
+            if sibling.is_file() and sibling.name.startswith(prefix):
+                sibling.unlink()
 
     def download_from_web(self, tool_name, download_url, check_content_type=True, cookies=None):
         """
