@@ -57,17 +57,21 @@ class Downloader:
                 f'server returned Content-Type "{mime_type}" instead of a binary or archive file'
             )
 
-    def resolve_filename(self, url, check_content_type=True, cookies=None):
+    def resolve_filename(self, url, check_content_type=True):
         """
         Resolve the real filename via HEAD request.
         Handles redirects and Content-Disposition headers.
 
         :param url: Original download URL
         :param check_content_type: Flag to validate the Content-Type header
-        :param cookies: Optional cookies dict to include in the request
         :return: Resolved filename string
         """
-        response = self.http_client.head(url, cookies=cookies)
+        # no explicit cookies= here: this HEAD goes through the same shared
+        # HttpClient session that already scraped this tool, so the jar
+        # already has what's needed - passing the scraped cookie dict again
+        # would duplicate every cookie in the Cookie header (requests merges
+        # both sources)
+        response = self.http_client.head(url)
         logging.debug("HEAD %s -> status=%s headers=%s", url, response.status_code, dict(response.headers))
 
         # validate Content-Type to detect invalid downloads (e.g. error pages)
@@ -163,7 +167,7 @@ class Downloader:
         :return: Path where the file has been saved
         """
         # resolve real filename (handles redirects and Content-Disposition)
-        file_name = self.resolve_filename(download_url, check_content_type, cookies)
+        file_name = self.resolve_filename(download_url, check_content_type)
         logging.info(f'{self.tool_name}: downloading update "{file_name}"')
 
         return self.download_file(url=download_url, file_name=file_name, cookies=cookies)
