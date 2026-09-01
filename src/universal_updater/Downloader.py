@@ -78,6 +78,7 @@ class Downloader:
             self.validate_content_type(response.headers.get('content-type', ''))
 
         # try to get filename from Content-Disposition header
+        filename = None
         content_disposition = response.headers.get('content-disposition', '')
         if content_disposition:
             msg = Message()
@@ -85,10 +86,18 @@ class Downloader:
             filename = msg.get_filename()
             if filename:
                 # strip any directory components to prevent path traversal
-                return pathlib.Path(filename).name
+                filename = pathlib.Path(filename).name
 
         # fallback to filename from final URL (after redirects)
-        return Helpers.get_filename_from_url(response.url)
+        if not filename:
+            filename = Helpers.get_filename_from_url(response.url)
+
+        # an empty name would make dest_path resolve to update_folder_path itself
+        # (a shared directory), corrupting unrelated in-flight downloads/unpacks
+        if not filename:
+            raise Exception(colorama.Fore.RED + f'{self.tool_name}: could not determine a filename for the download')
+
+        return filename
 
     def download_file(self, url, file_name, cookies=None):
         """
