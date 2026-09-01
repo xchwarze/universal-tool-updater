@@ -186,7 +186,22 @@ class Packer:
 
         # unpack old version into an isolated temp folder, see _temp_dir
         with self._temp_dir('merge') as old_tool_unpack_path:
-            self.unpack(old_tool_compress_path, old_tool_unpack_path)
+            try:
+                self.unpack(old_tool_compress_path, old_tool_unpack_path)
+            except Exception as error:
+                # A previous version of this project built archives with
+                # `archive.writeall(dir, arcname='')`, which py7zr wrote with
+                # a malformed root entry name. Older py7zr tolerated reading
+                # that back; current py7zr's stricter path sanitization
+                # correctly refuses to extract it. Rather than fail the
+                # whole update over an old archive we can no longer read,
+                # skip the merge and install the new version fresh.
+                logging.warning(
+                    colorama.Fore.YELLOW +
+                    f'{self.tool_name}: could not read old archive "{old_compress_name}" to merge with '
+                    f'({error}) - installing the new version without merging.'
+                )
+                return False
 
             # merge
             shutil.copytree(tool_unpack_path, old_tool_unpack_path, copy_function=shutil.copy, dirs_exist_ok=True)
