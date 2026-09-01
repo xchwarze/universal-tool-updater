@@ -10,27 +10,19 @@ from universal_updater.Helpers import Helpers
 class FileManager:
     """Handles file and folder operations like cleanup and copy."""
 
-    def __init__(self, script_path, disable_clean):
+    def __init__(self, tool_name, tool_config, script_path, disable_clean=True):
         """
-        Initialize FileManager with script path and clean option.
+        Initialize FileManager with configurations.
 
+        :param tool_name: Name of the tool
+        :param tool_config: Configuration dict for the tool
         :param script_path: Path to the script
         :param disable_clean: Flag to disable folder cleanup
         """
-        self.script_path = script_path
-        self.disable_clean = disable_clean
-        self.tool_name = ""
-        self.tool_config = {}
-
-    def tool_setup(self, tool_name, tool_config):
-        """
-        Initialize tool-specific settings.
-
-        :param tool_name: Name of the tool
-        :param tool_config: Configuration object for the specific tool
-        """
         self.tool_name = tool_name
         self.tool_config = tool_config
+        self.script_path = script_path
+        self.disable_clean = disable_clean
 
     def get_tool_install_path(self):
         """
@@ -87,11 +79,7 @@ class FileManager:
         use_merge = Helpers.config_flag(self.tool_config, 'merge')
         if self.disable_clean or use_merge:
             shutil.copytree(tool_unpack_path, tool_folder_path, copy_function=shutil.copy, dirs_exist_ok=True)
-            return {
-                'tool_name': self.tool_name,
-                'tool_folder': str(tool_folder_path),
-                'save_compress_name': '',
-            }
+            return Helpers.build_result(self.tool_name, tool_folder_path)
 
         # copy into a fresh sibling staging folder first, then swap it in with renames,
         # so a failed copy never leaves tool_folder_path empty or half-written
@@ -108,8 +96,4 @@ class FileManager:
         staging_path.rename(tool_folder_path)
         Helpers.delete_folder(backup_path)
 
-        return {
-            'tool_name': self.tool_name,
-            'tool_folder': str(tool_folder_path),
-            'save_compress_name': '',
-        }
+        return Helpers.build_result(self.tool_name, tool_folder_path)
