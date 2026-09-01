@@ -185,7 +185,7 @@ class Packer:
             shutil.move(old_tool_unpack_path, tool_unpack_path, copy_function=shutil.copy)
         finally:
             if old_tool_unpack_path.exists():
-                shutil.rmtree(old_tool_unpack_path, ignore_errors=True)
+                Helpers.delete_folder(old_tool_unpack_path, ignore_errors=True)
 
     def repack_step(self, tool_folder_path, tool_unpack_path, version):
         """
@@ -196,7 +196,7 @@ class Packer:
         :param version: Version of the tool
         :return: Dictionary containing tool name, tool folder, and compressed file name
         """
-        use_merge = self.tool_config.get('merge', None)
+        use_merge = Helpers.config_flag(self.tool_config, 'merge')
         if use_merge:
             self.repack_merge(tool_folder_path, tool_unpack_path)
 
@@ -228,7 +228,7 @@ class Packer:
 
             shutil.copy(tool_repack_path, tool_folder_path)
         finally:
-            shutil.rmtree(repack_temp_path, ignore_errors=True)
+            Helpers.delete_folder(repack_temp_path, ignore_errors=True)
 
         return {
             'tool_name': self.tool_name,
