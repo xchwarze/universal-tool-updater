@@ -38,7 +38,11 @@ class ScriptExecutor:
         :param script: Raw script or command string from tools.ini
         :return: List of argv parts, prefixed for PowerShell execution if the script is a .ps1 file
         """
-        parts = shlex.split(script, posix=False)
+        raw_parts = shlex.split(script, posix=False)
+        parts = [
+            part[1:-1] if len(part) >= 2 and part[0] == '"' and part[-1] == '"' else part
+            for part in raw_parts
+        ]
         if parts and pathlib.Path(parts[0]).suffix.lower() == '.ps1':
             return ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', *parts]
 
