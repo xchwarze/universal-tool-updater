@@ -43,10 +43,11 @@ class Downloader:
     def validate_content_type(self, content_type):
         """
         Validate the Content-Type header to ensure the response is a downloadable file.
-        Only allows known binary and archive content types.
+        Rejects known non-binary content types (e.g. an HTML error page); anything
+        else is allowed through.
 
         :param content_type: Content-Type header value from the response
-        :raises Exception: If the content type is not in the whitelist
+        :raises Exception: If the content type is in INVALID_CONTENT_TYPES
         """
         if not content_type:
             return
