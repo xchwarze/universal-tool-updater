@@ -1,0 +1,90 @@
+name: Tests
+
+# Runs both test layers - the fast pytest unit suite (test/unit) and the
+# functional/e2e battery (test/run_pipeline.ps1) - automatically so nothing
+# regresses silently going forward.
+#
+# Triggers on every push to master AND on every pull request. push-to-master
+# alone would only catch regressions after they've already landed; adding
+# pull_request gates them before merge instead, which is strictly more
+# useful and costs nothing extra (it's the same job, just running earlier).
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  test:
+    # This project is Windows-specific (PyInstaller onefile EXE, .bat/.ps1
+    # hooks, Windows path/mutex handling, unrar.exe) and cannot run on
+    # Linux/macOS runners - same reasoning as release.yml, which also pins
+    # windows-latest.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install runtime dependencies
+        working-directory: ./src
+        run: pip install -r requirements.txt
+
+      - name: Install test dependencies
+        working-directory: ./test
+        run: pip install -r requirements-test.txt
+
+      # Layer 1: pure-unit-test suite (test/unit, pytest). No network, no
+      # subprocess, no HTTP server - fast and fully deterministic, so it is
+      # a hard, non-negotiable gate. Invocation matches test/README.md
+      # exactly ("pytest test/unit -v" from the repo root).
+      - name: Run unit tests (pytest)
+        run: pytest test/unit -v
+
+      # Layer 2: functional/e2e battery (test/run_pipeline.ps1). Drives the
+      # real src/UpdateManager.py end-to-end (scraping, download, unpack,
+      # repack, hooks) against a local fixture HTTP server plus a handful of
+      # small real-network public tools (Portmon, malunpack, OUI; mitmproxy
+      # dry-run only). The script locates the repo root itself relative to
+      # its own file path, so it runs the same way whether invoked from the
+      # repo root (as here, matching test/README.md's documented usage) or
+      # elsewhere. It exits 0 on success and 1 if any assertion failed, so a
+      # plain (non continue-on-error) step gates the job correctly.
+      #
+      # Kept as a HARD gate rather than continue-on-error, even though this
+      # step makes a few real calls to third-party hosts:
+      #   - The script already absorbs network flakiness itself, per
+      #     assertion: Assert-TrueOrNetworkSkip downgrades an assertion to
+      #     SKIP (not FAIL) when the log for that specific tool shows a
+      #     recognizable network-failure signature (ConnectionError,
+      #     Timeout, NameResolutionError, SSLError, etc.), instead of
+      #     failing the whole run because one third-party host is
+      #     unreachable.
+      #   - A single tool's exception (network or otherwise) is caught and
+      #     logged by UpdateManager.handle_tool_updates() and never escapes
+      #     to make the process itself exit non-zero, so the hard `exit
+      #     code == 0` assertions aren't at the mercy of one flaky host
+      #     either.
+      #   - The RAR fixture/scenario already self-skips via Assert-Skip (not
+      #     a failure) when no real Rar.exe/WinRAR is found, which is
+      #     expected on GitHub-hosted windows-latest runners (WinRAR isn't
+      #     preinstalled). unrar.exe itself is checked into the repo root
+      #     and gets copied into the scratch dir, so RAR *extraction* still
+      #     works; only the fixture-*creation* step needs Rar.exe and is the
+      #     part that skips.
+      #   - Given the above, a real failure here means either an actual
+      #     regression or a third-party endpoint that's been down long
+      #     enough to not be transient - both worth surfacing loudly rather
+      #     than silently masking with continue-on-error, which would
+      #     defeat the point of this workflow.
+      - name: Run functional pipeline battery
+        shell: pwsh
+        run: .\test\run_pipeline.ps1
+
+# Note: test/.run/ (the pipeline's scratch working directory) is already
+# covered by test/.gitignore and this job never runs any git add/commit
+# step, so no extra cleanup step is needed here - each run gets a disposable
+# runner VM regardless, and Initialize-ScratchDir in run_pipeline.ps1 wipes
+# test/.run/ itself at the start of every invocation.
