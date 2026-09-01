@@ -56,6 +56,18 @@ class Helpers:
         return str(value).strip().lower() in Helpers._TRUE_VALUES
 
     @staticmethod
+    def build_result(tool_name, tool_folder_path, save_compress_name=''):
+        """
+        Build the standard processing-step result dict consumed by
+        Updater.post_update's hook calls.
+        """
+        return {
+            'tool_name': tool_name,
+            'tool_folder': str(tool_folder_path),
+            'save_compress_name': save_compress_name,
+        }
+
+    @staticmethod
     def is_valid_url(url: str) -> bool:
         """
         Return True if URL has a valid HTTP/S scheme and network location.

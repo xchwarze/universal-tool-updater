@@ -15,30 +15,22 @@ from universal_updater.Helpers import Helpers
 class Packer:
     """Handles unpacking and repacking of compressed files."""
 
-    def __init__(self, update_folder_path, save_format_type, disable_clean):
+    def __init__(self, tool_name, tool_config, update_folder_path, save_format_type='full', disable_clean=True):
         """
         Initialize the Packer with configurations.
 
+        :param tool_name: Name of the tool
+        :param tool_config: Configuration dict for the tool
         :param update_folder_path: Path to the update folder
         :param save_format_type: Format type for saving compressed files
         :param disable_clean: Flag to disable cleaning
         """
+        self.tool_name = tool_name
+        self.tool_config = tool_config
         self.update_folder_path = update_folder_path
         self.save_format_type = save_format_type
         self.disable_clean = disable_clean
-        self.tool_name = ""
-        self.tool_config = {}
         self.valid_extensions = ['.zip', '.rar', '.7z']
-
-    def tool_setup(self, tool_name, tool_config):
-        """
-        Initialize tool-specific settings.
-
-        :param tool_name: Name of the tool
-        :param tool_config: Configuration object for the specific tool
-        """
-        self.tool_name = tool_name
-        self.tool_config = tool_config
 
     def unpack_zip(self, file_path, unpack_path, file_pass=None):
         """
@@ -234,8 +226,4 @@ class Packer:
 
             shutil.copy(tool_repack_path, tool_folder_path)
 
-        return {
-            'tool_name': self.tool_name,
-            'tool_folder': str(tool_folder_path),
-            'save_compress_name': save_compress_name,
-        }
+        return Helpers.build_result(self.tool_name, tool_folder_path, save_compress_name)

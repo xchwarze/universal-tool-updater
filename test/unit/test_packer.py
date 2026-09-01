@@ -21,13 +21,13 @@ from universal_updater.Packer import Packer
 
 def make_packer(update_folder_path, tool_name='ToolX', tool_config=None,
                  save_format_type='full', disable_clean=False):
-    packer = Packer(
-        update_folder_path=str(update_folder_path),
+    return Packer(
+        tool_name,
+        tool_config if tool_config is not None else {},
+        str(update_folder_path),
         save_format_type=save_format_type,
         disable_clean=disable_clean,
     )
-    packer.tool_setup(tool_name, tool_config if tool_config is not None else {})
-    return packer
 
 
 def build_7z(archive_path, files):
