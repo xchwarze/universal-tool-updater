@@ -8,12 +8,15 @@ class ScriptExecutor:
     Class responsible for executing scripts during the update process.
     """
 
-    def __init__(self):
+    def __init__(self, config_manager=None):
         """
         Initialize ScriptExecutor.
+
+        :param config_manager: Configuration manager instance, used to read global settings
         """
         self.tool_name = ""
         self.tool_config = {}
+        self.config_manager = config_manager
         self.valid_types = ['post_unpack', 'pre_update', 'post_update']
 
     def tool_setup(self, tool_name, tool_config):
@@ -54,8 +57,8 @@ class ScriptExecutor:
 
         :param script_params: Dict of parameters to pass to the script as args
         """
-        if 'global_post_update' in self.tool_config:
-            script = self.tool_config['global_post_update']
+        script = self.config_manager.get_config('UpdaterConfig', 'global_post_update', fallback=None) if self.config_manager else None
+        if script:
             logging.info(f'{self.tool_name}: exec global script "{script}"')
 
             try:

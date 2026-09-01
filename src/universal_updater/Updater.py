@@ -69,7 +69,7 @@ class Updater:
             disable_clean=updater_setup.get('disable_clean', False),
             script_path=self.script_path,
         )
-        self.script_executor = ScriptExecutor()
+        self.script_executor = ScriptExecutor(config_manager=self.config_manager)
 
     def check_tool_installed(self):
         """
