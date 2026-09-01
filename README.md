@@ -122,8 +122,10 @@ The updater provides a flexible set of parameters to control its behavior:
 | `-v, --version`                                                    | Display the program's version number and exit.                                             |
 | `-u [UPDATE ...], --update [UPDATE ...]`                           | Specify a list of tools to update. Defaults to updating all tools if not provided.         |
 | `-dsu, --disable-self-update`                                      | Disable automatic self-update of this script.                                              |
-| `-dfc, --disable-folder-clean`                                     | Skip cleaning the tool's folder during updates.                                            |
-| `-dr, --disable-repack`                                            | Prevent repacking of tools after the update process.                                       |
+| `-dfc, --disable-folder-clean`                                     | Skip cleaning the tool's folder during updates. Default: `true` (unless overridden in `[UpdaterConfig]`). |
+| `-fc, --folder-clean`                                              | Clean the tool's folder during updates. Mutually exclusive with `-dfc`.                    |
+| `-dr, --disable-repack`                                            | Prevent repacking of tools after the update process. Default: `true` (unless overridden in `[UpdaterConfig]`). |
+| `-r, --repack`                                                     | Repack tools after the update process. Mutually exclusive with `-dr`.                      |
 | `-dic, --disable-install-check`                                    | Skip checking if the tools are properly installed.                                         |
 | `-dpb, --disable-progress-bar`                                     | Disable the download progress bar for updates.                                             |
 | `-sft {full,version,name}, --save-format-type {full,version,name}` | Specify the save format type for compressed updates: `full`, `version`, or `name`.         |

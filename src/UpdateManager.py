@@ -155,7 +155,8 @@ class UpdateManager:
             action='store_true',
             default=False
         )
-        parser.add_argument(
+        clean_group = parser.add_mutually_exclusive_group()
+        clean_group.add_argument(
             '-dfc',
             '--disable-folder-clean',
             dest='disable_clean',
@@ -163,13 +164,28 @@ class UpdateManager:
             action='store_true',
             default=self.get_argparse_default('disable_clean', True)
         )
-        parser.add_argument(
+        clean_group.add_argument(
+            '-fc',
+            '--folder-clean',
+            dest='disable_clean',
+            help='Clean the tool\'s folder during updates (overrides the config default).',
+            action='store_false',
+        )
+        repack_group = parser.add_mutually_exclusive_group()
+        repack_group.add_argument(
             '-dr',
             '--disable-repack',
             dest='disable_repack',
             help='Prevent repacking of tools after the update process.',
             action='store_true',
             default=self.get_argparse_default('disable_repack', True)
+        )
+        repack_group.add_argument(
+            '-r',
+            '--repack',
+            dest='disable_repack',
+            help='Repack tools after the update process (overrides the config default).',
+            action='store_false',
         )
         parser.add_argument(
             '-dic',
@@ -282,6 +298,14 @@ class UpdateManager:
         if self.arguments.download_segments < 1:
             parser.error('--download-segments must be at least 1')
 
+    # argparse `dest` names that double as [UpdaterConfig] keys, persisted
+    # together by update_default_params()
+    DEFAULT_PARAM_KEYS = (
+        'disable_clean', 'disable_repack', 'disable_install_check', 'disable_progress',
+        'save_format_type', 'use_github_api', 'request_timeout', 'download_retries',
+        'parallel_workers', 'download_segments',
+    )
+
     def update_default_params(self):
         """
         Updates default parameters in the configuration based on command-line arguments.
@@ -289,17 +313,8 @@ class UpdateManager:
         if not self.arguments.update_default_params:
             return False
 
-        self.config_manager.set_config(self.config_section_defaults, 'disable_clean', str(self.arguments.disable_clean))
-        self.config_manager.set_config(self.config_section_defaults, 'disable_repack', str(self.arguments.disable_repack))
-        self.config_manager.set_config(self.config_section_defaults, 'disable_install_check',
-                                       str(self.arguments.disable_install_check))
-        self.config_manager.set_config(self.config_section_defaults, 'disable_progress', str(self.arguments.disable_progress))
-        self.config_manager.set_config(self.config_section_defaults, 'save_format_type', self.arguments.save_format_type)
-        self.config_manager.set_config(self.config_section_defaults, 'use_github_api', self.arguments.use_github_api)
-        self.config_manager.set_config(self.config_section_defaults, 'request_timeout', str(self.arguments.request_timeout))
-        self.config_manager.set_config(self.config_section_defaults, 'download_retries', str(self.arguments.download_retries))
-        self.config_manager.set_config(self.config_section_defaults, 'parallel_workers', str(self.arguments.parallel_workers))
-        self.config_manager.set_config(self.config_section_defaults, 'download_segments', str(self.arguments.download_segments))
+        values = {key: str(getattr(self.arguments, key)) for key in self.DEFAULT_PARAM_KEYS}
+        self.config_manager.set_many(self.config_section_defaults, values)
 
         logging.info(colorama.Fore.GREEN + '[*] Update default params successful')
 
@@ -357,16 +372,16 @@ class UpdateManager:
         """
         Handles the auto-update logic for the script itself.
         """
-        auto_update_setup = {**vars(self.arguments), 'force_download': False}
-        updater = Updater(
-            config_manager=self.config_manager,
-            updater_setup=auto_update_setup,
-            shutdown_event=self.shutdown_event,
-        )
         if self.config_section_self_update in self.config_manager.get_sections() and \
                 not self.arguments.disable_self_update:
             logging.info(colorama.Fore.YELLOW + '[+] Checking for engine updates:')
 
+            auto_update_setup = {**vars(self.arguments), 'force_download': False}
+            updater = Updater(
+                config_manager=self.config_manager,
+                updater_setup=auto_update_setup,
+                shutdown_event=self.shutdown_event,
+            )
             try:
                 updater.update(self.config_section_self_update)
             except Exception as exception:
@@ -382,7 +397,6 @@ class UpdateManager:
         :param updater_setup: Dictionary of updater configuration settings
         :param update_list: List of tools to update
         """
-        failed_updates = 0
         failed_names = []
         lock = threading.Lock()
         total_updates = len(update_list)
@@ -392,7 +406,6 @@ class UpdateManager:
         logging.info(colorama.Fore.YELLOW + '[+] Checking for tool updates:')
 
         def update_tool(name):
-            nonlocal failed_updates
             if self.shutdown_event.is_set():
                 return
             updater = Updater(
@@ -405,7 +418,6 @@ class UpdateManager:
             except Exception as exception:
                 if not self.shutdown_event.is_set():
                     with lock:
-                        failed_updates += 1
                         failed_names.append(name)
                     logging.error(exception)
 
@@ -426,6 +438,7 @@ class UpdateManager:
         # add missing new line separator
         logging.info("\n")
 
+        failed_updates = len(failed_names)
         success = total_updates - failed_updates
         logging.info(colorama.Fore.YELLOW +
                      f"[*] Update process completed: {success} succeeded, "

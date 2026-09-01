@@ -122,8 +122,10 @@ El actualizador ofrece un conjunto flexible de parámetros para controlar su com
 | `-v, --version`                                                    | Muestra el número de versión del programa y finaliza.                                                   |
 | `-u [UPDATE ...], --update [UPDATE ...]`                           | Especifica una lista de herramientas a actualizar. Si no se proporciona, se actualizarán todas.         |
 | `-dsu, --disable-self-update`                                      | Desactiva la auto-actualización automática del script.                                                  |
-| `-dfc, --disable-folder-clean`                                     | Evita limpiar la carpeta de herramientas durante las actualizaciones.                                   |
-| `-dr, --disable-repack`                                            | Impide empaquetar nuevamente las herramientas después del proceso de actualización.                     |
+| `-dfc, --disable-folder-clean`                                     | Evita limpiar la carpeta de herramientas durante las actualizaciones. Por defecto: `true` (salvo que se sobreescriba en `[UpdaterConfig]`). |
+| `-fc, --folder-clean`                                              | Limpia la carpeta de herramientas durante las actualizaciones. Mutuamente exclusivo con `-dfc`.         |
+| `-dr, --disable-repack`                                            | Impide empaquetar nuevamente las herramientas después del proceso de actualización. Por defecto: `true` (salvo que se sobreescriba en `[UpdaterConfig]`). |
+| `-r, --repack`                                                     | Reempaqueta las herramientas después del proceso de actualización. Mutuamente exclusivo con `-dr`.      |
 | `-dic, --disable-install-check`                                    | Omite la verificación de si las herramientas están instaladas correctamente.                            |
 | `-dpb, --disable-progress-bar`                                     | Desactiva la barra de progreso durante las descargas.                                                   |
 | `-sft {full,version,name}, --save-format-type {full,version,name}` | Especifica el tipo de formato para guardar las actualizaciones comprimidas: `full`, `version` o `name`. |
