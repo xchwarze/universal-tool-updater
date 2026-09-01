@@ -50,16 +50,19 @@ class Scraper:
         self.tool_name = tool_name
         self.tool_config = tool_config
 
-    def _request_with_retry(self, method_name, url, headers):
+    def _request_with_retry(self, method_name, url, headers=None):
         """
         Performs an HTTP request with retry logic and exponential backoff.
 
         :param method_name: HTTP method name ('get' or 'head')
         :param url: The URL to request
-        :param headers: Dictionary of HTTP headers
+        :param headers: Dictionary of HTTP headers. Defaults to {'User-Agent': self.user_agent} if not provided.
         :return: Response object
         :raises Exception: If all attempts fail
         """
+        if headers is None:
+            headers = {'User-Agent': self.user_agent}
+
         method = getattr(self.session, method_name)
         last_exception = None
         for attempt in range(self.request_retries):
@@ -85,9 +88,6 @@ class Scraper:
         :return: Response object from the HEAD request
         :raises Exception: If an error occurs during the request
         """
-        if headers is None:
-            headers = {'User-Agent': self.user_agent}
-
         return self._request_with_retry('head', url, headers)
 
     def get_request(self, url, headers=None):
@@ -99,9 +99,6 @@ class Scraper:
         :return: Response object from the GET request
         :raises Exception: If an error occurs during the request
         """
-        if headers is None:
-            headers = {'User-Agent': self.user_agent}
-
         return self._request_with_retry('get', url, headers)
 
     def get_arch_config(self, key):
