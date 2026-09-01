@@ -464,9 +464,15 @@ class UpdateManager:
         self.parse_arguments()
         self.set_logging_level()
         self.check_single_instance()
-        self.update_default_params()
-        self.handle_updates()
-        self.cleanup_mutex()
+
+        # from here on we own mutex.lock (check_single_instance already exited
+        # if another instance held it) — always release it, even on a crash
+        # unrelated to a graceful shutdown
+        try:
+            self.update_default_params()
+            self.handle_updates()
+        finally:
+            self.cleanup_mutex()
 
 
 # Entry point for the script
