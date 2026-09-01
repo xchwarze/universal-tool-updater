@@ -1,24 +1,25 @@
 """
 Unit tests for Downloader._clear_stale_download_state and resolve_filename.
 
-resolve_filename normally does a real `requests.head(...)` call; here it is
-exercised with a lightweight fake response object (just `.headers`, `.url`,
-`.raise_for_status()`) via monkeypatching `requests.head`, so no network is
-involved.
+resolve_filename normally does a real HTTP HEAD via the shared HttpClient;
+here it is exercised with a lightweight fake response object (just
+`.headers`, `.url`, `.status_code`, `.raise_for_status()`) via monkeypatching
+the HttpClient's own requests.Session, so no network is involved.
 """
 
 import pytest
-import requests
 
 from universal_updater.Downloader import Downloader
+from universal_updater.HttpClient import HttpClient
 
 
-def make_downloader(update_folder_path):
-    return Downloader(user_agent='test-agent', disable_progress=True, update_folder_path=str(update_folder_path))
+def make_downloader(update_folder_path, tool_config=None):
+    http_client = HttpClient(tool_name='Tool', user_agent='test-agent')
+    return Downloader('Tool', tool_config or {}, http_client, str(update_folder_path), disable_progress=True)
 
 
 class FakeHeadResponse:
-    """Minimal stand-in for a requests.Response, as returned by requests.head()."""
+    """Minimal stand-in for a requests.Response, as returned by HttpClient.head()."""
 
     def __init__(self, headers=None, url='https://example.com/download/file.zip'):
         self.headers = headers or {}
@@ -81,7 +82,7 @@ def test_resolve_filename_prefers_plain_filename_over_filename_star(tmp_path, mo
     response = FakeHeadResponse(headers={
         'content-disposition': 'attachment; filename="good.zip"; filename*=UTF-8\'\'good-alt.zip',
     })
-    monkeypatch.setattr(requests, 'head', lambda *args, **kwargs: response)
+    monkeypatch.setattr(downloader.http_client.session, 'head', lambda *args, **kwargs: response)
 
     filename = downloader.resolve_filename('https://example.com/download')
 
@@ -93,7 +94,7 @@ def test_resolve_filename_defuses_path_traversal(tmp_path, monkeypatch):
     response = FakeHeadResponse(headers={
         'content-disposition': 'attachment; filename="../../evil.zip"',
     })
-    monkeypatch.setattr(requests, 'head', lambda *args, **kwargs: response)
+    monkeypatch.setattr(downloader.http_client.session, 'head', lambda *args, **kwargs: response)
 
     filename = downloader.resolve_filename('https://example.com/download')
 
@@ -106,7 +107,7 @@ def test_resolve_filename_defuses_path_traversal(tmp_path, monkeypatch):
 def test_resolve_filename_falls_back_to_url_when_no_content_disposition(tmp_path, monkeypatch):
     downloader = make_downloader(tmp_path)
     response = FakeHeadResponse(headers={}, url='https://example.com/files/tool-v1.2.3.zip')
-    monkeypatch.setattr(requests, 'head', lambda *args, **kwargs: response)
+    monkeypatch.setattr(downloader.http_client.session, 'head', lambda *args, **kwargs: response)
 
     filename = downloader.resolve_filename('https://example.com/download')
 
@@ -116,7 +117,7 @@ def test_resolve_filename_falls_back_to_url_when_no_content_disposition(tmp_path
 def test_resolve_filename_rejects_invalid_content_type(tmp_path, monkeypatch):
     downloader = make_downloader(tmp_path)
     response = FakeHeadResponse(headers={'content-type': 'text/html; charset=utf-8'})
-    monkeypatch.setattr(requests, 'head', lambda *args, **kwargs: response)
+    monkeypatch.setattr(downloader.http_client.session, 'head', lambda *args, **kwargs: response)
 
     with pytest.raises(Exception):
         downloader.resolve_filename('https://example.com/download')
@@ -133,7 +134,7 @@ def test_resolve_filename_raises_on_empty_resolved_filename(tmp_path, monkeypatc
         headers={'content-disposition': 'attachment; filename="/"'},
         url='https://example.com',
     )
-    monkeypatch.setattr(requests, 'head', lambda *args, **kwargs: response)
+    monkeypatch.setattr(downloader.http_client.session, 'head', lambda *args, **kwargs: response)
 
     with pytest.raises(Exception):
         downloader.resolve_filename('https://example.com/download')

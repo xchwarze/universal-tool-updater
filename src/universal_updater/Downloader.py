@@ -1,6 +1,5 @@
 import pathlib
 import aiohttp
-import requests
 import colorama
 import logging
 
@@ -21,24 +20,23 @@ class Downloader:
         'application/xml',
     }
 
-    def __init__(self, user_agent, disable_progress, update_folder_path, download_retries=3, download_segments=3, request_timeout=30):
+    def __init__(self, tool_name, tool_config, http_client, update_folder_path, disable_progress=False, download_segments=3):
         """
-        Initialize with optional user_agent, disable_progress flag, and update_folder_path.
+        Initialize the Downloader.
 
-        :param user_agent: User agent string for HTTP requests
-        :param disable_progress: Flag to disable progress bar
+        :param tool_name: Name of the tool
+        :param tool_config: Configuration dict for the tool
+        :param http_client: Shared HttpClient (session + retry-with-backoff + User-Agent)
         :param update_folder_path: Path to the folder where updates will be saved
-        :param download_retries: Number of retry attempts on download failure
+        :param disable_progress: Flag to disable progress bar
         :param download_segments: Number of segments for accelerated downloads
-        :param request_timeout: Timeout in seconds for HTTP requests
         """
-        self.user_agent = user_agent
-        self.disable_progress = disable_progress
+        self.tool_name = tool_name
+        self.tool_config = tool_config
+        self.http_client = http_client
         self.update_folder_path = update_folder_path
-        self.download_retries = download_retries
+        self.disable_progress = disable_progress
         self.download_segments = download_segments
-        self.request_timeout = request_timeout
-        self.tool_name = ""
 
     def validate_content_type(self, content_type):
         """
@@ -69,9 +67,7 @@ class Downloader:
         :param cookies: Optional cookies dict to include in the request
         :return: Resolved filename string
         """
-        response = requests.head(url, headers={'User-Agent': self.user_agent},
-                                         cookies=cookies, allow_redirects=True, timeout=self.request_timeout)
-        response.raise_for_status()
+        response = self.http_client.head(url, cookies=cookies)
         logging.debug("HEAD %s -> status=%s headers=%s", url, response.status_code, dict(response.headers))
 
         # validate Content-Type to detect invalid downloads (e.g. error pages)
@@ -128,12 +124,12 @@ class Downloader:
             display=not self.disable_progress,
             multisegment=True,
             block=True,
-            retries=self.download_retries,
+            retries=self.http_client.request_retries,
             overwrite=True,
             etag_validation=False,
-            headers={'User-Agent': self.user_agent},
+            headers={'User-Agent': self.http_client.user_agent},
             cookies=cookies,
-            timeout=aiohttp.ClientTimeout(total=self.request_timeout),
+            timeout=aiohttp.ClientTimeout(total=self.http_client.request_timeout),
         )
 
         if downloader.failed or not result:
@@ -157,18 +153,15 @@ class Downloader:
             if sibling.is_file() and sibling.name.startswith(prefix):
                 sibling.unlink()
 
-    def download_from_web(self, tool_name, download_url, check_content_type=True, cookies=None):
+    def download_from_web(self, download_url, check_content_type=True, cookies=None):
         """
-        Perform a download step for a given tool.
+        Perform a download step for this tool.
 
-        :param tool_name: Name of the tool
         :param download_url: URL from which to download the tool
         :param check_content_type: Flag to validate the Content-Type header
         :param cookies: Optional cookies dict to include in the request
         :return: Path where the file has been saved
         """
-        self.tool_name = tool_name
-
         # resolve real filename (handles redirects and Content-Disposition)
         file_name = self.resolve_filename(download_url, check_content_type, cookies)
         logging.info(f'{self.tool_name}: downloading update "{file_name}"')
