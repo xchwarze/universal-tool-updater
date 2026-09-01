@@ -71,7 +71,12 @@ class UpdateManager:
 
         if os.path.exists(self.process_mutex):
             with open(self.process_mutex, 'r') as lock:
-                existing_pid = int(lock.read().strip())
+                content = lock.read().strip()
+
+            try:
+                existing_pid = int(content)
+            except ValueError:
+                existing_pid = None
 
             # Verify if the process with the PID exists
             if existing_pid and psutil.pid_exists(existing_pid):
