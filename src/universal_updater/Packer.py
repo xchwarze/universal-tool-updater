@@ -198,7 +198,7 @@ class Packer:
 
             # merge
             shutil.copytree(tool_unpack_path, old_tool_unpack_path, copy_function=shutil.copy, dirs_exist_ok=True)
-            shutil.rmtree(tool_unpack_path)
+            Helpers.delete_folder(tool_unpack_path, ignore_errors=False)
             shutil.move(old_tool_unpack_path, tool_unpack_path, copy_function=shutil.copy)
 
     def repack_step(self, tool_folder_path, tool_unpack_path, version):
