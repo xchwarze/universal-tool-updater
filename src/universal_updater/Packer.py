@@ -5,6 +5,7 @@ import pathlib
 import os
 import shutil
 import tempfile
+import contextlib
 import colorama
 import logging
 
@@ -150,6 +151,30 @@ class Packer:
 
         return pack_name
 
+    @contextlib.contextmanager
+    def _temp_dir(self, kind):
+        """
+        Create an isolated temp folder outside update_folder_path and clean it
+        up afterwards, regardless of success or failure.
+
+        tool_unpack_path (and unpack_folder_path, i.e. update_folder_path) can
+        be the same directory when the archive has no single wrapping folder
+        (see FileManager.processing_tool_path), so a temp folder built under
+        update_folder_path could end up nested inside the very directory a
+        caller is reading from or wiping - hence dir=update_folder_path.parent.
+
+        :param kind: Short label used in the temp folder's prefix (e.g. "merge", "repack")
+        :yield: Path to the created temp folder
+        """
+        path = pathlib.Path(tempfile.mkdtemp(
+            prefix=f'{self.tool_name}_{kind}_',
+            dir=pathlib.Path(self.update_folder_path).parent,
+        ))
+        try:
+            yield path
+        finally:
+            Helpers.delete_folder(path, ignore_errors=True)
+
     def repack_merge(self, tool_folder_path, tool_unpack_path):
         """
         Merge the new unpacked version with the old one.
@@ -167,25 +192,14 @@ class Packer:
 
         logging.info(f'{self.tool_name}: merging with "{old_compress_name}"')
 
-        # unpack old version into an isolated temp folder outside update_folder_path.
-        # tool_unpack_path can equal update_folder_path (when the archive has no single
-        # wrapping folder, see FileManager.processing_tool_path), so a path built under
-        # update_folder_path would end up nested inside tool_unpack_path and get wiped
-        # by the rmtree below before the final move.
-        old_tool_unpack_path = pathlib.Path(tempfile.mkdtemp(
-            prefix=f'{self.tool_name}_merge_',
-            dir=pathlib.Path(self.update_folder_path).parent,
-        ))
-        try:
+        # unpack old version into an isolated temp folder, see _temp_dir
+        with self._temp_dir('merge') as old_tool_unpack_path:
             self.unpack(old_tool_compress_path, old_tool_unpack_path)
 
             # merge
             shutil.copytree(tool_unpack_path, old_tool_unpack_path, copy_function=shutil.copy, dirs_exist_ok=True)
             shutil.rmtree(tool_unpack_path)
             shutil.move(old_tool_unpack_path, tool_unpack_path, copy_function=shutil.copy)
-        finally:
-            if old_tool_unpack_path.exists():
-                Helpers.delete_folder(old_tool_unpack_path, ignore_errors=True)
 
     def repack_step(self, tool_folder_path, tool_unpack_path, version):
         """
@@ -204,19 +218,11 @@ class Packer:
 
         save_compress_name = self.repack_save_compress_name(self.tool_name, version)
 
-        # Build the archive in an isolated temp folder unique to this run, rather than
-        # a path shared across tools (previously update_folder_path.parent, the common
-        # "updates" root): with save_format_type "version", two tools resolving to the
-        # same version string could race on an identical filename there. A folder under
-        # update_folder_path itself isn't safe either: tool_unpack_path can equal
-        # update_folder_path (no single wrapping folder, see
-        # FileManager.processing_tool_path), which would put the archive being written
-        # inside the very directory it's reading from.
-        repack_temp_path = pathlib.Path(tempfile.mkdtemp(
-            prefix=f'{self.tool_name}_repack_',
-            dir=pathlib.Path(self.update_folder_path).parent,
-        ))
-        try:
+        # Build the archive in an isolated temp folder unique to this run, see
+        # _temp_dir. (With save_format_type "version", two tools resolving to
+        # the same version string could otherwise race on an identical
+        # filename if this were built directly under a shared folder.)
+        with self._temp_dir('repack') as repack_temp_path:
             tool_repack_path = repack_temp_path.joinpath(save_compress_name)
 
             with py7zr.SevenZipFile(tool_repack_path, 'w') as archive:
@@ -227,8 +233,6 @@ class Packer:
                 Helpers.cleanup_folder(tool_folder_path)
 
             shutil.copy(tool_repack_path, tool_folder_path)
-        finally:
-            Helpers.delete_folder(repack_temp_path, ignore_errors=True)
 
         return {
             'tool_name': self.tool_name,
