@@ -37,7 +37,7 @@ class Scraper:
         self.github_files = 'https://github.com/{0}/releases/expanded_assets/{1}'
         self.github_api_files = 'https://api.github.com/repos/{0}/releases/latest'
         self.scoop_manifest = 'https://raw.githubusercontent.com/ScoopInstaller/{0}/master/bucket/{1}.json'
-        self.re_github_version = '\/releases\/tag\/(\S+)"'
+        self.re_github_version = r'\/releases\/tag\/(\S+)"'
         self.re_github_download = '"(.*?/{0})"'
 
     def tool_setup(self, tool_name, tool_config):

@@ -37,7 +37,7 @@ class UpdateManager:
         """
         Prints the banner for the update process.
         """
-        print(colorama.Fore.YELLOW + f"""
+        print(colorama.Fore.YELLOW + rf"""
      ____          __     __            __        __    __         
     /  _/___  ____/ /__  / /____  _____/ /_____ _/ /_  / /__  _____
     / // __ \/ __  / _ \/ __/ _ \/ ___/ __/ __ `/ __ \/ / _ \/ ___/
