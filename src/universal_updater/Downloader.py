@@ -4,6 +4,8 @@ import requests
 import colorama
 import logging
 
+from email.message import Message
+
 from pypdl import Pypdl
 import pypdl_extend
 from universal_updater.Helpers import Helpers
@@ -77,8 +79,13 @@ class Downloader:
 
         # try to get filename from Content-Disposition header
         content_disposition = response.headers.get('content-disposition', '')
-        if 'filename=' in content_disposition:
-            return content_disposition.split('filename=')[-1].strip('"; ')
+        if content_disposition:
+            msg = Message()
+            msg['content-disposition'] = content_disposition
+            filename = msg.get_filename()
+            if filename:
+                # strip any directory components to prevent path traversal
+                return pathlib.Path(filename).name
 
         # fallback to filename from final URL (after redirects)
         return Helpers.get_filename_from_url(response.url)
