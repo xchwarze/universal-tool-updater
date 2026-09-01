@@ -1,7 +1,5 @@
 import re
-import time
 import platform
-import requests
 import urllib.parse
 import hashlib
 import colorama
@@ -15,24 +13,22 @@ class Scraper:
     Handles all scraping tasks for the Updater.
     """
 
-    def __init__(self, force_download, use_github_api, user_agent, request_timeout=30, request_retries=3):
+    def __init__(self, tool_name, tool_config, http_client, force_download=False, use_github_api=''):
         """
         Initialize the Scraper with necessary configurations.
 
-        :param use_github_api: Boolean to determine if GitHub API should be used
-        :param user_agent: User agent string for HTTP requests
-        :param request_timeout: Timeout in seconds for HTTP requests
-        :param request_retries: Number of retry attempts on request failure
+        :param tool_name: Name of the tool
+        :param tool_config: Configuration dict for the tool
+        :param http_client: Shared HttpClient (session + retry-with-backoff) for all requests
+        :param force_download: Treat the remote version as an update even if unchanged
+        :param use_github_api: GitHub API token; falsy uses the plain HTML scrape path
         """
-        self.user_agent = user_agent
+        self.tool_name = tool_name
+        self.tool_config = tool_config
+        self.http_client = http_client
         self.force_download = force_download
         self.use_github_api = use_github_api
-        self.request_timeout = request_timeout
-        self.request_retries = request_retries
-        self.session = requests.Session()
         self.arch_suffix = '_x64' if '64' in platform.machine() else '_x86'
-        self.tool_name = ""
-        self.tool_config = {}
         self.github_version_check = 'https://github.com/{0}/releases.atom'
         self.github_files = 'https://github.com/{0}/releases/expanded_assets/{1}'
         self.github_api_files = 'https://api.github.com/repos/{0}/releases/latest'
@@ -40,66 +36,27 @@ class Scraper:
         self.re_github_version = r'\/releases\/tag\/(\S+)"'
         self.re_github_download = '"(.*?/{0})"'
 
-    def tool_setup(self, tool_name, tool_config):
-        """
-        Initialize tool-specific settings.
-
-        :param tool_name: Name of the tool
-        :param tool_config: Configuration object for the specific tool
-        """
-        self.tool_name = tool_name
-        self.tool_config = tool_config
-
-    def _request_with_retry(self, method_name, url, headers=None):
-        """
-        Performs an HTTP request with retry logic and exponential backoff.
-
-        :param method_name: HTTP method name ('get' or 'head')
-        :param url: The URL to request
-        :param headers: Dictionary of HTTP headers. Defaults to {'User-Agent': self.user_agent} if not provided.
-        :return: Response object
-        :raises Exception: If all attempts fail
-        """
-        if headers is None:
-            headers = {'User-Agent': self.user_agent}
-
-        method = getattr(self.session, method_name)
-        last_exception = None
-        for attempt in range(self.request_retries):
-            try:
-                response = method(url, headers=headers, timeout=self.request_timeout, allow_redirects=True)
-                response.raise_for_status()
-                return response
-            except Exception as exception:
-                last_exception = exception
-                if attempt < self.request_retries - 1:
-                    wait = 2 ** attempt
-                    logging.warning(f'{self.tool_name}: request failed (attempt {attempt + 1}/{self.request_retries}), retrying in {wait}s...')
-                    time.sleep(wait)
-
-        raise Exception(colorama.Fore.RED + f'{self.tool_name}: Error {last_exception}')
-
-    def head_request(self, url, headers=None):
-        """
-        Performs a HEAD request to a given URL with retry logic.
-
-        :param url: The URL to perform the HEAD request to
-        :param headers: Optional dictionary containing HTTP headers.
-        :return: Response object from the HEAD request
-        :raises Exception: If an error occurs during the request
-        """
-        return self._request_with_retry('head', url, headers)
-
     def get_request(self, url, headers=None):
         """
-        Performs a GET request to a given URL.
+        Performs a GET request via the shared HttpClient.
 
         :param url: The URL to perform the GET request to
-        :param headers: Optional dictionary containing HTTP headers. If not provided, the default User-Agent is used.
+        :param headers: Optional dictionary containing HTTP headers
         :return: Response object from the GET request
         :raises Exception: If an error occurs during the request
         """
-        return self._request_with_retry('get', url, headers)
+        return self.http_client.get(url, headers=headers)
+
+    def head_request(self, url, headers=None):
+        """
+        Performs a HEAD request via the shared HttpClient.
+
+        :param url: The URL to perform the HEAD request to
+        :param headers: Optional dictionary containing HTTP headers
+        :return: Response object from the HEAD request
+        :raises Exception: If an error occurs during the request
+        """
+        return self.http_client.head(url, headers=headers)
 
     def get_arch_config(self, key):
         """
@@ -109,6 +66,20 @@ class Scraper:
         :return: Value for the arch-specific key or the generic key, or None if neither exists
         """
         return self.tool_config.get(f'{key}{self.arch_suffix}') or self.tool_config.get(key)
+
+    def _require_arch_config(self, key):
+        """
+        Like get_arch_config, but raises a clear error if the key is missing.
+
+        :param key: Base config key (e.g. 're_download')
+        :return: The resolved value
+        :raises Exception: If neither the arch-specific nor the generic key is set
+        """
+        value = self.get_arch_config(key)
+        if not value:
+            raise Exception(colorama.Fore.RED + f'{self.tool_name}: {key} not set')
+
+        return value
 
     #################
     # Scraper methods
@@ -410,9 +381,7 @@ class Scraper:
         :param download_url: Base URL for download
         :return: Download URL found or None
         """
-        re_download = self.get_arch_config('re_download')
-        if not re_download:
-            raise Exception(colorama.Fore.RED + f'{self.tool_name}: re_download not set!')
+        re_download = self._require_arch_config('re_download')
 
         download_response = self.get_request(download_url)
         fixed_re_download = self.re_github_download.format(re_download)
@@ -432,9 +401,7 @@ class Scraper:
         :param json: JSON response from GitHub API
         :return: Download URL found or None
         """
-        re_download = self.get_arch_config('re_download')
-        if not re_download:
-            raise Exception(colorama.Fore.RED + f'{self.tool_name}: re_download regex not set')
+        re_download = self._require_arch_config('re_download')
 
         assets = json.get('assets')
         if assets is None:
@@ -457,19 +424,18 @@ class Scraper:
     #################
     def scrape_step(self):
         """
-        Execute a specific script for a given tool based on tool_config.
+        Execute the appropriate scrape strategy for this tool based on its
+        'from' config value.
 
         :return: Dictionary containing 'download_version', 'download_url' and 'cookies'
         """
+        strategies = {
+            'github': self.scrape_github,
+            'http': self.scrape_http,
+            'scoop': self.scrape_scoop,
+        }
         from_url = self.tool_config.get('from', 'web')
-        if from_url == 'github':
-            result = self.scrape_github()
-        elif from_url == 'http':
-            result = self.scrape_http()
-        elif from_url == 'scoop':
-            result = self.scrape_scoop()
-        else:
-            result = self.scrape_web()
+        result = strategies.get(from_url, self.scrape_web)()
 
         if result:
             result['cookies'] = self._collect_cookies_for(result.get('download_url', ''))
@@ -481,8 +447,8 @@ class Scraper:
         Build a plain cookie dict scoped to the given URL's host, so a later
         request to the download URL only receives cookies that actually belong
         to it — avoids both CookieConflictError (duplicate names across domains
-        in self.session.cookies) and leaking unrelated-domain session cookies
-        to the download host.
+        in self.http_client.session.cookies) and leaking unrelated-domain
+        session cookies to the download host.
 
         :param url: The URL the cookies will be sent to
         :return: Dictionary of cookie name/value pairs scoped to the URL's host
@@ -492,7 +458,7 @@ class Scraper:
 
         target_host = urllib.parse.urlparse(url).hostname or ''
         cookies = {}
-        for cookie in self.session.cookies:
+        for cookie in self.http_client.session.cookies:
             cookie_domain = (cookie.domain or '').lstrip('.')
             if cookie_domain and target_host != cookie_domain and not target_host.endswith('.' + cookie_domain):
                 continue
