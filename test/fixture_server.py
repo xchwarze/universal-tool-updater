@@ -4,7 +4,9 @@ battery.
 
 Serves deterministic synthetic content on 127.0.0.1:FIXTURE_PORT:
   - fake versioned "release" HTML pages, for from=web regex scraping
-  - small generated .zip / .7z / (optionally) .rar downloads
+  - small generated .zip / .7z / .rar downloads (the .rar is a static
+    committed binary, see fixtures.rar_fixture_bytes - no compressor
+    needed at runtime, so this works in CI too)
   - a nested zip-inside-zip (Packer.unpack_nested)
   - a route that lies about its Content-Type (content-type rejection check)
   - a route with a deliberately tricky Content-Disposition header
@@ -15,7 +17,7 @@ stdlib. Range requests (single range) are supported so pypdl's
 multi-segment downloader behaves realistically against it.
 
 Usage:
-    python fixture_server.py [--rar-exe PATH]
+    python fixture_server.py
 
 Prints "FIXTURE SERVER READY" once listening, then serves until killed.
 """
@@ -45,7 +47,7 @@ def _html(body: str) -> bytes:
     return body.encode("utf-8")
 
 
-def build_assets(rar_exe):
+def build_assets():
     """Build the full {path: Asset} registry served by this process."""
     assets = {}
 
@@ -142,18 +144,17 @@ def build_assets(rar_exe):
             disposition=f'attachment; filename="slow{n}-v1.0.0.zip"',
         )
 
-    # ---- RAR fixture (only registered if a real Rar.exe is available) --
+    # ---- RAR fixture (static, committed binary - see fixtures.rar_fixture_bytes) --
     assets["/release/rarfixture.html"] = Asset("text/html", _html(
         "<html><body><h1>FixtureRar</h1>"
         f"<p>FixtureRar version {fixtures.RAR_VERSION}</p>"
         f'<a href="download/rarfixture-v{fixtures.RAR_VERSION}.rar">Download</a>'
         "</body></html>"
     ))
-    if rar_exe:
-        assets[f"/download/rarfixture-v{fixtures.RAR_VERSION}.rar"] = Asset(
-            "application/x-rar-compressed", fixtures.rar_fixture_bytes(rar_exe),
-            disposition=f'attachment; filename="rarfixture-v{fixtures.RAR_VERSION}.rar"',
-        )
+    assets[f"/download/rarfixture-v{fixtures.RAR_VERSION}.rar"] = Asset(
+        "application/x-rar-compressed", fixtures.rar_fixture_bytes(),
+        disposition=f'attachment; filename="rarfixture-v{fixtures.RAR_VERSION}.rar"',
+    )
 
     return assets
 
@@ -232,12 +233,11 @@ class FixtureHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
 
-def serve(rar_exe=None, ready_event=None):
-    assets = build_assets(rar_exe)
+def serve(ready_event=None):
+    assets = build_assets()
     server = ThreadingHTTPServer((fixtures.FIXTURE_HOST, fixtures.FIXTURE_PORT), FixtureHandler)
     server.assets = assets
-    print(f"FIXTURE SERVER READY on {fixtures.FIXTURE_BASE_URL} "
-          f"({len(assets)} routes, rar={'yes' if rar_exe else 'no'})")
+    print(f"FIXTURE SERVER READY on {fixtures.FIXTURE_BASE_URL} ({len(assets)} routes)")
     sys.stdout.flush()
     if ready_event is not None:
         ready_event.set()
@@ -245,16 +245,8 @@ def serve(rar_exe=None, ready_event=None):
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--rar-exe", default=None, help="Path to a real Rar.exe to build the RAR fixture with")
-    parser.add_argument("--auto-detect-rar", action="store_true", help="Auto-detect Rar.exe if --rar-exe not given")
-    args = parser.parse_args()
-
-    rar_exe = args.rar_exe
-    if not rar_exe and args.auto_detect_rar:
-        rar_exe = fixtures.find_rar_exe()
-
-    serve(rar_exe=rar_exe)
+    argparse.ArgumentParser().parse_args()  # no options; kept for a stable CLI shape
+    serve()
 
 
 if __name__ == "__main__":

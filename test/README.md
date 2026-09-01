@@ -68,7 +68,7 @@ tool's install folder.
 | # | Flags | Covers |
 |---|-------|--------|
 | 1 | `--dry-run` (all tools) | Fast smoke pass: scraping only, no downloads, for every `from=` type at once (web/github/http/scoop, local fixtures + real internet). Asserts `updates\` and tool folders are never created, and that `pre_update` hooks fire even in dry-run while `post_update`/`post_unpack`/`global_post_update` do not (they're downstream of the dry-run early return). |
-| 2 | `-u <fixture tools>` (default flags) | The deterministic core: from=web relative-link resolution, zip-in-zip (`Packer.unpack_nested`), the Content-Type rejection check and its `disable_content_type_check` escape hatch, the tricky `Content-Disposition` (`filename=` + `filename*=` + `../../evil.zip` traversal) regression, `merge=True` forced on a first run, `update_file_pass` against a real encrypted 7z, the per-tool `disable_repack` override, a real `.rar` archive (if a real Rar.exe was found - see below), and all five hook scripts (`.bat`/`.ps1`, bare `.ps1` path, multi-word command string, `global_post_update`). |
+| 2 | `-u <fixture tools>` (default flags) | The deterministic core: from=web relative-link resolution, zip-in-zip (`Packer.unpack_nested`), the Content-Type rejection check and its `disable_content_type_check` escape hatch, the tricky `Content-Disposition` (`filename=` + `filename*=` + `../../evil.zip` traversal) regression, `merge=True` forced on a first run, `update_file_pass` against a real encrypted 7z, the per-tool `disable_repack` override, a real `.rar` archive (static fixture, see below), and all five hook scripts (`.bat`/`.ps1`, bare `.ps1` path, multi-word command string, `global_post_update`). |
 | 3 | `-u Portmon malunpack OUI` (default flags) | **Requires network.** A real `from=web` (Portmon/sysinternals), a real `from=github` with `re_download_x64`/`re_download_x86` arch overrides (malunpack), and a real `from=http` (OUI, IEEE OUI list) - full download + unpack + repack against the real internet, copied in spirit from the repo's own root `tools.ini`. |
 | 4 | `-u FixtureWeb -f -sft {full,version,name}` × 3 | `save_format_type` variants: `<name> - <version>.7z`, `<version>.7z`, `<name>.7z`. |
 | 5 | `-u FixtureWeb FixtureNested -dr -f` | Global `--disable-repack`: raw folder saved instead of a `.7z`, even for tools whose own config doesn't set `disable_repack`. |
@@ -103,18 +103,19 @@ below.
   Confirmed with a standalone interpreter check before wiring this up.
 - `/download/protected-v5.5.5.7z` - a real AES-encrypted 7z (see
   `update_file_pass` below).
-- `/download/rarfixture-v9.9.9.rar` - a real RAR archive, present only if a
-  real `Rar.exe` was found on the machine running the battery.
+- `/download/rarfixture-v9.9.9.rar` - a real RAR archive, always present
+  (see the RAR section below - it's a static, committed binary, not built
+  at test-run time).
 
 All download routes support HTTP Range requests (206 Partial Content) so
 pypdl's multi-segment downloader behaves realistically against it, not
 just a degenerate single-segment fallback.
 
 `test/fixtures.py` is the pure asset-building module behind the server (zip
-and 7z builders, RAR-archive builder, Rar.exe auto-detection) and also
-serves as a tiny CLI so `run_pipeline.ps1` can seed the merge fixture
-without needing its own archive-writing code:
-`python fixtures.py seed-merge <dest>` / `python fixtures.py has-rar`.
+and 7z builders; the RAR archive is a static committed binary, see the RAR
+section below) and also serves as a tiny CLI so `run_pipeline.ps1` can seed
+the merge fixture without needing its own archive-writing code:
+`python fixtures.py seed-merge <dest>`.
 
 `test/verify_helpers.py` is the assertion-side counterpart: extracts an
 archive (`.zip`/`.7z`/`.rar`, optionally password-protected) or reads a
@@ -144,23 +145,27 @@ download (the way `ProcDOT` does in the real `tools.ini`).
 
 ## RAR
 
-The task asked to check whether a real `rar.exe`/WinRAR is actually
-available before giving up on a RAR fixture. On the machine this battery
-was built and run on, `C:\Program Files\WinRAR\Rar.exe` **is** available,
-so `fixtures.py` uses it to build a real `.rar` archive
-(`fixtures.find_rar_exe()` also checks `Program Files (x86)` and `PATH`).
-`FixtureRar` is then included in scenario 2's real run and asserted like
-every other fixture tool, exercising `Packer.unpack_rar` /
-`rarfile.RarFile` against the `unrar.exe` copied into the scratch dir from
-the repo root (matching the README's requirement that `unrar.exe` sit next
-to the running script).
+Building a `.rar` archive requires a real `Rar.exe`/WinRAR install (the
+paid compressor) - the project's own `unrar.exe` (free, versioned in the
+repo) can only *extract*, never create, RAR archives. CI (GitHub-hosted
+`windows-latest`) does not and will never have WinRAR installed, so a
+RAR fixture built at test-run time would always be skipped there.
 
-If no `Rar.exe`/WinRAR is found on the machine running this battery,
-`run_pipeline.ps1` detects that (`fixtures.py has-rar`) and skips the RAR
-fixture/tool for the real run, printing `SKIP` instead of failing - the
-`[FixtureRar]` section still exists in `tools.ini` and its release page is
-still served, so scenario 1's `--dry-run` pass (which never downloads
-anything) still smoke-tests its `from=web` scraping either way.
+Instead, `test/static_fixtures/rar_marker.rar` is a real RAR archive built
+**once** (on a machine with a real WinRAR install) and committed to the
+repo as a small (108-byte) binary fixture. `fixtures.rar_fixture_bytes()`
+just reads it off disk - no compressor involved at test-run time.
+`FixtureRar` is always included in scenario 2's real run and asserted like
+every other fixture tool, exercising `Packer.unpack_rar` / `rarfile.RarFile`
+against the `unrar.exe` copied into the scratch dir from the repo root
+(matching the README's requirement that `unrar.exe` sit next to the running
+script) - this now runs identically everywhere, including CI, with no more
+environment-dependent `SKIP`.
+
+`fixtures.find_rar_exe()` / `fixtures.rar_bytes()` still exist as a dev-only
+utility for regenerating `rar_marker.rar` if its content ever needs to
+change (see the docstring on `rar_fixture_bytes()` for the exact
+regeneration snippet) - they are not called anywhere at test-run time.
 
 ## Honest gaps (untested by this battery, even with network available)
 

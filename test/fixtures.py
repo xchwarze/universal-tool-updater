@@ -79,10 +79,18 @@ def sevenzip_bytes(entries: dict, password: str = None) -> bytes:
         return out_path.read_bytes()
 
 
+STATIC_FIXTURES_DIR = pathlib.Path(__file__).parent / "static_fixtures"
+RAR_FIXTURE_PATH = STATIC_FIXTURES_DIR / "rar_marker.rar"
+
+
 def find_rar_exe():
     """Locate a real Rar.exe (WinRAR, archive-creation capable) on this
-    machine, if any. Returns the path, or None. Used to decide whether the
-    RAR fixture/scenario can be exercised for real, or must be skipped."""
+    machine, if any. Returns the path, or None.
+
+    NOT used at test-run time (see rar_fixture_bytes) - only a dev utility
+    for regenerating static_fixtures/rar_marker.rar if its content ever
+    needs to change, since building a .rar requires the paid WinRAR
+    compressor, which CI (GitHub-hosted windows-latest) doesn't have."""
     candidates = [
         r"C:\Program Files\WinRAR\Rar.exe",
         r"C:\Program Files (x86)\WinRAR\Rar.exe",
@@ -102,7 +110,10 @@ def find_rar_exe():
 def rar_bytes(entries: dict, rar_exe: str) -> bytes:
     """Build a real RAR archive using a real Rar.exe (WinRAR) install.
     Raises if rar_exe is falsy/invalid - callers should gate on
-    find_rar_exe() first."""
+    find_rar_exe() first.
+
+    Dev-only: used to regenerate static_fixtures/rar_marker.rar, not called
+    at test-run time."""
     if not rar_exe:
         raise RuntimeError("no rar.exe available")
 
@@ -187,8 +198,20 @@ def tricky_disposition_zip_bytes() -> bytes:
     return basic_zip_bytes()
 
 
-def rar_fixture_bytes(rar_exe: str) -> bytes:
-    return rar_bytes({"rar_marker.txt": b"hello from a real rar archive\n"}, rar_exe)
+def rar_fixture_bytes() -> bytes:
+    """A real RAR archive, committed as a static binary fixture (built once
+    with a real Rar.exe/WinRAR install and checked in) so the RAR scenario
+    runs everywhere - including CI, where WinRAR's paid compressor isn't
+    available - without needing a compressor at test-run time. Extraction
+    still exercises the real app path (rarfile + the repo's own unrar.exe),
+    only fixture *creation* is offline.
+
+    To regenerate (only if the fixture's content ever needs to change):
+        rar_exe = find_rar_exe()
+        data = rar_bytes({"rar_marker.txt": b"hello from a real rar archive\n"}, rar_exe)
+        RAR_FIXTURE_PATH.write_bytes(data)
+    """
+    return RAR_FIXTURE_PATH.read_bytes()
 
 
 # ---------------------------------------------------------------------------

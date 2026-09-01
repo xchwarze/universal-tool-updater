@@ -199,8 +199,6 @@ function Stop-PortOwner {
 }
 
 function Start-FixtureServer {
-    param([string]$RarExe)
-
     Stop-PortOwner -Port $FixturePort
 
     New-Item -ItemType Directory -Force -Path $LogsDir | Out-Null
@@ -208,7 +206,6 @@ function Start-FixtureServer {
     $stderrFile = Join-Path $LogsDir 'fixture_server.stderr.log'
 
     $argList = @('fixture_server.py')
-    if ($RarExe) { $argList += @('--rar-exe', $RarExe) }
 
     $proc = Start-Process -FilePath 'python' -ArgumentList (Format-ProcessArguments $argList) `
         -WorkingDirectory $TestDir -NoNewWindow -PassThru `
@@ -274,15 +271,6 @@ function Initialize-ScratchDir {
 
     Get-ChildItem -Path $ScratchDir -Recurse -Directory -Filter '__pycache__' -ErrorAction SilentlyContinue |
         Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
-}
-
-function Test-RarAvailable {
-    $out = & python $FixturesHelper 'has-rar' 2>$null
-    if ($LASTEXITCODE -eq 0 -and $out) {
-        $parts = "$out".Trim() -split ' ', 2
-        if ($parts.Length -ge 2) { return $parts[1] }
-    }
-    return $null
 }
 
 function Initialize-MergeSeed {
@@ -366,14 +354,7 @@ try {
     Initialize-ScratchDir
     Initialize-MergeSeed
 
-    $rarExe = Test-RarAvailable
-    if ($rarExe) {
-        Write-Host "  RAR fixture: ENABLED (found $rarExe)" -ForegroundColor DarkGray
-    } else {
-        Write-Host "  RAR fixture: SKIPPED (no Rar.exe/WinRAR found on this machine)" -ForegroundColor Yellow
-    }
-
-    $fixtureProc = Start-FixtureServer -RarExe $rarExe
+    $fixtureProc = Start-FixtureServer
 
     # -------------------------------------------------------------
     # Scenario 1: full --dry-run pass over everything
@@ -410,8 +391,8 @@ try {
     # -------------------------------------------------------------
     Write-Section "Scenario 2: real run, fixture-backed + merge entries, default flags"
     $s2Tools = @('FixtureWeb', 'FixtureNested', 'FixtureContentTypeReject', 'FixtureContentTypeAllowed',
-                 'FixtureContentDisposition', 'FixtureMerge', 'FixturePasswordProtected', 'FixtureRepackOverride')
-    if ($rarExe) { $s2Tools += 'FixtureRar' }
+                 'FixtureContentDisposition', 'FixtureMerge', 'FixturePasswordProtected', 'FixtureRepackOverride',
+                 'FixtureRar')
     $r2 = Invoke-Updater -Name 's2_real_fixture_run' -Arguments (@('-u') + $s2Tools)
 
     Assert-True ($r2.ExitCode -eq 0) "s2: exit code is 0 (got $($r2.ExitCode))"
@@ -463,13 +444,12 @@ try {
     Assert-True (Test-Path (Join-Path $rpoFolder 'readme.txt')) "s2: FixtureRepackOverride saved as raw files (readme.txt present)"
     Assert-True (-not (Test-Path (Join-Path $rpoFolder 'FixtureRepackOverride - 1.4.2.7z'))) "s2: FixtureRepackOverride was NOT repacked into a .7z"
 
-    if ($rarExe) {
-        $rarArchive = Find-FirstFile (Join-Path $ToolsDir 'FixtureRar') 'FixtureRar - *.7z'
-        Assert-ArchiveContainsFiles -ArchivePath $rarArchive -ExpectedRelativeFiles @('rar_marker.txt') `
-            -Description "s2: FixtureRar archive contains rar_marker.txt (real .rar unpacked via unrar.exe)"
-    } else {
-        Assert-Skip "s2: FixtureRar (no Rar.exe/WinRAR available on this machine to build the fixture)"
-    }
+    # FixtureRar: static, committed .rar fixture unpacked via the repo's own
+    # unrar.exe - no Rar.exe/WinRAR compressor needed at test-run time, so
+    # this runs the same everywhere, including CI.
+    $rarArchive = Find-FirstFile (Join-Path $ToolsDir 'FixtureRar') 'FixtureRar - *.7z'
+    Assert-ArchiveContainsFiles -ArchivePath $rarArchive -ExpectedRelativeFiles @('rar_marker.txt') `
+        -Description "s2: FixtureRar archive contains rar_marker.txt (real .rar unpacked via unrar.exe)"
 
     # Hook scripts: all wired hooks must have fired by now
     $markersAfterS2 = if (Test-Path $MarkersLog) { Get-Content -Raw $MarkersLog } else { '' }
