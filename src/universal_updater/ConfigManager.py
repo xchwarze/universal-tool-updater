@@ -43,11 +43,22 @@ class ConfigManager:
         :param key: Key in the section
         :param value: Value to set
         """
+        self.set_many(section, {key: value})
+
+    def set_many(self, section, values):
+        """
+        Set multiple configuration values in one write.
+
+        :param section: Section in the config file
+        :param values: Dict of key -> value to set
+        """
         with self._lock:
             if not self.config.has_section(section):
                 self.config.add_section(section)
 
-            self.config.set(section, key, value)
+            for key, value in values.items():
+                self.config.set(section, key, value)
+
             self._write_config()
 
     def get_tool_config(self, name):
@@ -93,13 +104,6 @@ class ConfigManager:
         """
         self.set_config(name, 'local_version', version)
 
-    def save_config(self):
-        """
-        Save the current configuration to file.
-        """
-        with self._lock:
-            self._write_config()
-
     def _write_config(self):
         """
         Write the current configuration to file (caller must hold the lock).
@@ -108,13 +112,15 @@ class ConfigManager:
         """
         config_path = pathlib.Path(self.config_file_name)
         fd, tmp_path = tempfile.mkstemp(
-            dir=str(config_path.parent) if str(config_path.parent) else '.',
+            dir=config_path.parent,
             prefix=f'.{config_path.name}.',
             suffix='.tmp',
         )
         try:
             with os.fdopen(fd, 'w', encoding='utf-8') as tmp_file:
                 self.config.write(tmp_file)
+                tmp_file.flush()
+                os.fsync(tmp_file.fileno())
             os.replace(tmp_path, self.config_file_name)
         except Exception:
             pathlib.Path(tmp_path).unlink(missing_ok=True)
