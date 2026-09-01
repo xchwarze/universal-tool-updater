@@ -448,7 +448,7 @@ class UpdateManager:
         self.handle_tool_updates(updater_setup, update_list)
 
         if not self.shutdown_event.is_set():
-            Updater(config_manager=self.config_manager).cleanup_updates_root()
+            Updater.cleanup_updates_root()
 
     def main(self):
         """

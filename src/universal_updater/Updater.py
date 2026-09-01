@@ -38,13 +38,13 @@ class Updater:
         self.shutdown_event = shutdown_event
         self.tool_name = ""
         self.tool_config = {}
-        self.script_path = os.fsdecode(os.getcwdb())
+        self.script_path = os.getcwd()
         self.updates_root = pathlib.Path(self.script_path) / 'updates'
         self.update_folder_path = self.updates_root
         self.request_user_agent = 'curl/7.84.0'
         self.config_manager = config_manager
         self.disable_install_check = updater_setup.get('disable_install_check', False)
-        self.disable_repack = updater_setup.get('disable_repack', False)
+        self.disable_repack = updater_setup.get('disable_repack', True)
         self.dry_run = updater_setup.get('dry_run', False)
         self.scraper = Scraper(
             force_download=updater_setup.get('force_download', False),
@@ -63,11 +63,11 @@ class Updater:
         )
         self.packer = Packer(
             save_format_type=updater_setup.get('save_format_type', 'full'),
-            disable_clean=updater_setup.get('disable_clean', False),
+            disable_clean=updater_setup.get('disable_clean', True),
             update_folder_path=self.update_folder_path,
         )
         self.file_manager = FileManager(
-            disable_clean=updater_setup.get('disable_clean', False),
+            disable_clean=updater_setup.get('disable_clean', True),
             script_path=self.script_path,
         )
         self.script_executor = ScriptExecutor(config_manager=self.config_manager)
@@ -107,10 +107,10 @@ class Updater:
         :return: Path to the downloaded file
         """
         # create updates folder if don't exist
-        if not pathlib.Path.exists(self.update_folder_path):
-            pathlib.Path.mkdir(self.update_folder_path, parents=True)
+        if not self.update_folder_path.exists():
+            self.update_folder_path.mkdir(parents=True)
 
-        check_content_type = not self.tool_config.get('disable_content_type_check', False)
+        check_content_type = not Helpers.config_flag(self.tool_config, 'disable_content_type_check')
         return self.downloader.download_from_web(self.tool_name, download_url, check_content_type, cookies)
 
     def processing_tool_step(self, file_path, download_version):
@@ -134,7 +134,7 @@ class Updater:
         )
 
         # save or repack logic
-        disable_repack = self.tool_config.get('disable_repack', None)
+        disable_repack = Helpers.config_flag(self.tool_config, 'disable_repack')
         tool_path = self.file_manager.processing_tool_path(unpack_folder_path)
         if self.disable_repack or disable_repack:
             logging.debug(f'{self.tool_name}: repack is disabled')
@@ -155,15 +155,21 @@ class Updater:
         """
         Clean up the update folder.
         """
-        if pathlib.Path.exists(self.update_folder_path):
+        if self.update_folder_path.exists():
             Helpers.cleanup_folder(self.update_folder_path)
 
-    def cleanup_updates_root(self):
+    @staticmethod
+    def cleanup_updates_root():
         """
-        Remove the entire updates root folder.
+        Remove the entire updates root folder (relative to the current
+        working directory, same place update_folder_path lives during a
+        run). Static so callers don't need to construct a full Updater
+        (5 collaborators, including a requests.Session) just to rmtree
+        one folder.
         """
-        if self.updates_root.exists():
-            Helpers.delete_folder(self.updates_root)
+        updates_root = pathlib.Path(os.getcwd()) / 'updates'
+        if updates_root.exists():
+            Helpers.delete_folder(updates_root)
 
     def _is_shutdown(self):
         """Check if a shutdown has been requested."""
