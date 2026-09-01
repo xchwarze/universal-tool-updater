@@ -6,7 +6,7 @@ from universal_updater.ScriptExecutor import ScriptExecutor
 
 
 def make_executor():
-    return ScriptExecutor()
+    return ScriptExecutor('Tool', {})
 
 
 def test_quoted_path_with_spaces_and_arg_strips_quotes():

@@ -4,32 +4,25 @@ import pathlib
 import colorama
 import logging
 
+from universal_updater.ConfigManager import ConfigManager
+
 
 class ScriptExecutor:
     """
     Class responsible for executing scripts during the update process.
     """
 
-    def __init__(self, config_manager=None):
+    def __init__(self, tool_name, tool_config, config_manager=None):
         """
         Initialize ScriptExecutor.
 
-        :param config_manager: Configuration manager instance, used to read global settings
-        """
-        self.tool_name = ""
-        self.tool_config = {}
-        self.config_manager = config_manager
-        self.valid_types = ['post_unpack', 'pre_update', 'post_update']
-
-    def tool_setup(self, tool_name, tool_config):
-        """
-        Initialize tool-specific settings.
-
         :param tool_name: Name of the tool
-        :param tool_config: Configuration object for the specific tool
+        :param tool_config: Configuration dict for the tool
+        :param config_manager: Configuration manager instance, used to read global settings
         """
         self.tool_name = tool_name
         self.tool_config = tool_config
+        self.config_manager = config_manager
 
     def _build_command(self, script):
         """
@@ -68,14 +61,14 @@ class ScriptExecutor:
 
         logging.info(colorama.Fore.BLUE + '------------------------------')
 
-    def execute_script(self, script_type, script_params = None):
+    def execute_script(self, script_type, script_params=None):
         """
         Execute a specific script for a given tool.
 
         :param script_type: Type of script to execute ('pre_update', 'post_update', 'post_unpack')
         :param script_params: Optional dict of parameters to pass to the script as args
         """
-        if script_type in self.valid_types and script_type in self.tool_config:
+        if script_type in self.tool_config:
             script = self.tool_config[script_type]
             params = script_params.values() if script_params else []
             self._run(f'{script_type} script', script, params)
@@ -86,6 +79,6 @@ class ScriptExecutor:
 
         :param script_params: Dict of parameters to pass to the script as args
         """
-        script = self.config_manager.get_config('UpdaterConfig', 'global_post_update', fallback=None) if self.config_manager else None
+        script = self.config_manager.get_config(ConfigManager.DEFAULT_SECTION, 'global_post_update', fallback=None) if self.config_manager else None
         if script:
             self._run('global script', script, script_params.values())

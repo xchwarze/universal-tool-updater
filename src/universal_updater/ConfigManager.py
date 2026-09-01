@@ -12,6 +12,8 @@ class ConfigManager:
     as well as updating the local version of a tool.
     """
 
+    DEFAULT_SECTION = 'UpdaterConfig'
+
     def __init__(self, config_file_name):
         """
         Initialize with the name of the config file.
