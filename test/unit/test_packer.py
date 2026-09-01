@@ -184,7 +184,7 @@ def test_repack_step_temp_archive_not_nested_in_tool_unpack_path(tmp_path, monke
 
     monkeypatch.setattr(tempfile, 'mkdtemp', spy_mkdtemp)
 
-    result = packer.repack_step(tool_folder_path, tool_unpack_path, unpack_folder_path, version='2.0.0')
+    result = packer.repack_step(tool_folder_path, tool_unpack_path, version='2.0.0')
 
     assert len(created_dirs) == 1
     temp_dir = created_dirs[0]
@@ -223,7 +223,7 @@ def test_repack_step_cleans_up_temp_dir_even_on_failure(tmp_path, monkeypatch):
     monkeypatch.setattr(py7zr, 'SevenZipFile', boom)
 
     with pytest.raises(RuntimeError):
-        packer.repack_step(tool_folder_path, unpack_folder_path, unpack_folder_path, version='1.0.0')
+        packer.repack_step(tool_folder_path, unpack_folder_path, version='1.0.0')
 
     leftover_temp_dirs = [p for p in updates_root.iterdir() if p.name.startswith('ToolFail_repack_')]
     assert leftover_temp_dirs == []

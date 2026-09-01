@@ -187,13 +187,12 @@ class Packer:
             if old_tool_unpack_path.exists():
                 shutil.rmtree(old_tool_unpack_path, ignore_errors=True)
 
-    def repack_step(self, tool_folder_path, tool_unpack_path, unpack_folder_path, version):
+    def repack_step(self, tool_folder_path, tool_unpack_path, version):
         """
         Perform the repack step for a specific tool.
 
         :param tool_folder_path: Path to the tool folder
         :param tool_unpack_path: Path to the unpacked folder
-        :param unpack_folder_path: Path to the folder containing unpacked files
         :param version: Version of the tool
         :return: Dictionary containing tool name, tool folder, and compressed file name
         """
@@ -206,16 +205,16 @@ class Packer:
         save_compress_name = self.repack_save_compress_name(self.tool_name, version)
 
         # Build the archive in an isolated temp folder unique to this run, rather than
-        # a path shared across tools (previously unpack_folder_path.parent, the common
+        # a path shared across tools (previously update_folder_path.parent, the common
         # "updates" root): with save_format_type "version", two tools resolving to the
         # same version string could race on an identical filename there. A folder under
-        # unpack_folder_path itself isn't safe either: tool_unpack_path can equal
-        # unpack_folder_path (no single wrapping folder, see
+        # update_folder_path itself isn't safe either: tool_unpack_path can equal
+        # update_folder_path (no single wrapping folder, see
         # FileManager.processing_tool_path), which would put the archive being written
         # inside the very directory it's reading from.
         repack_temp_path = pathlib.Path(tempfile.mkdtemp(
             prefix=f'{self.tool_name}_repack_',
-            dir=pathlib.Path(unpack_folder_path).parent,
+            dir=pathlib.Path(self.update_folder_path).parent,
         ))
         try:
             tool_repack_path = repack_temp_path.joinpath(save_compress_name)

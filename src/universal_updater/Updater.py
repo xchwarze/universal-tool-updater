@@ -147,7 +147,6 @@ class Updater:
         return self.packer.repack_step(
             tool_folder_path=tool_path['folder_path'],
             tool_unpack_path=tool_path['unpack_path'],
-            unpack_folder_path=unpack_folder_path,
             version=download_version,
         )
 
