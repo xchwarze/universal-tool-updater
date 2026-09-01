@@ -26,7 +26,7 @@ class UpdateManager:
         self.version = '2.5.1'
         self.process_mutex = 'mutex.lock'
         self.config_file_name = 'tools.ini'
-        self.config_section_defaults = 'UpdaterConfig'
+        self.config_section_defaults = ConfigManager.DEFAULT_SECTION
         self.config_section_self_update = 'UpdaterAutoUpdater'
         self.arguments = {}
         self.shutdown_event = threading.Event()
@@ -101,33 +101,41 @@ class UpdateManager:
         if not self.arguments.disable_mutex_check and os.path.exists(self.process_mutex):
             os.remove(self.process_mutex)
 
-    def get_argparse_default_int(self, option, default):
+    def config_default_bool(self, option, default):
         """
-        Retrieves an integer default value from config, falling back to default on invalid values.
+        Retrieves a boolean default value for a given argparse option from
+        [UpdaterConfig], falling back to default if not set or invalid.
+
+        :param option: The name of the argparse option
+        :param default: The default value if not found in the configuration
+        :return: The default value for the argparse option
+        """
+        return self.config_manager.get_boolean(self.config_section_defaults, option, fallback=default)
+
+    def config_default_str(self, option, default):
+        """
+        Retrieves a string default value for a given argparse option from
+        [UpdaterConfig], falling back to default if not set.
+
+        :param option: The name of the argparse option
+        :param default: The default value if not found in the configuration
+        :return: The default value for the argparse option
+        """
+        return self.config_manager.get_config(self.config_section_defaults, option, fallback=default)
+
+    def config_default_int(self, option, default):
+        """
+        Retrieves an integer default value for a given argparse option from
+        [UpdaterConfig], falling back to default if not found or invalid.
 
         :param option: The name of the argparse option
         :param default: The integer default value if not found or invalid
         :return: Integer default value
         """
         try:
-            return int(self.get_argparse_default(option, default, is_bool=False))
+            return int(self.config_default_str(option, default))
         except (ValueError, TypeError):
             return default
-
-    def get_argparse_default(self, option, default, is_bool=True):
-        """
-        Retrieves the default value for a given argparse option from the configuration.
-
-        :param option: The name of the argparse option
-        :param default: The default value to return if the option is not found in the configuration
-        :param is_bool: Flag indicating if the option is a boolean
-        :return: The default value for the argparse option
-        """
-        if is_bool:
-            # return value.lower() in ('true', '1', 'yes', 'on')
-            return self.config_manager.get_boolean(self.config_section_defaults, option, fallback=default)
-
-        return self.config_manager.get_config(self.config_section_defaults, option, fallback=default)
 
     def parse_arguments(self):
         """
@@ -162,7 +170,7 @@ class UpdateManager:
             dest='disable_clean',
             help='Skip cleaning the tool\'s folder during updates.',
             action='store_true',
-            default=self.get_argparse_default('disable_clean', True)
+            default=self.config_default_bool('disable_clean', True)
         )
         clean_group.add_argument(
             '-fc',
@@ -178,7 +186,7 @@ class UpdateManager:
             dest='disable_repack',
             help='Prevent repacking of tools after the update process.',
             action='store_true',
-            default=self.get_argparse_default('disable_repack', True)
+            default=self.config_default_bool('disable_repack', True)
         )
         repack_group.add_argument(
             '-r',
@@ -193,7 +201,7 @@ class UpdateManager:
             dest='disable_install_check',
             help='Skip checking if the tools are properly installed.',
             action='store_true',
-            default=self.get_argparse_default('disable_install_check', False)
+            default=self.config_default_bool('disable_install_check', False)
         )
         parser.add_argument(
             '-dpb',
@@ -201,7 +209,7 @@ class UpdateManager:
             dest='disable_progress',
             help='Disable the download progress bar for updates.',
             action='store_true',
-            default=self.get_argparse_default('disable_progress', False)
+            default=self.config_default_bool('disable_progress', False)
         )
         parser.add_argument(
             '-sft',
@@ -209,7 +217,7 @@ class UpdateManager:
             dest='save_format_type',
             help='Specify the save format type for compressed updates: "full", "version", or "name".',
             choices=['full', 'version', 'name'],
-            default=self.get_argparse_default('save_format_type', 'full', False)
+            default=self.config_default_str('save_format_type', 'full')
         )
         parser.add_argument(
             '-f',
@@ -224,7 +232,7 @@ class UpdateManager:
             '--use-github-api',
             dest='use_github_api',
             help='Use the GitHub API for updates, specifying the token to authenticate.',
-            default=self.get_argparse_default('use_github_api', '', False)
+            default=self.config_default_str('use_github_api', '')
         )
         parser.add_argument(
             '-udp',
@@ -263,7 +271,7 @@ class UpdateManager:
             dest='request_timeout',
             help='Timeout in seconds for HTTP requests.',
             type=int,
-            default=self.get_argparse_default_int('request_timeout', 30)
+            default=self.config_default_int('request_timeout', 30)
         )
         parser.add_argument(
             '-dre',
@@ -271,7 +279,7 @@ class UpdateManager:
             dest='download_retries',
             help='Number of retry attempts on download failure.',
             type=int,
-            default=self.get_argparse_default_int('download_retries', 3)
+            default=self.config_default_int('download_retries', 3)
         )
         parser.add_argument(
             '-pw',
@@ -279,7 +287,7 @@ class UpdateManager:
             dest='parallel_workers',
             help='Number of tools to update in parallel.',
             type=int,
-            default=self.get_argparse_default_int('parallel_workers', 1)
+            default=self.config_default_int('parallel_workers', 1)
         )
         parser.add_argument(
             '-ds',
@@ -287,7 +295,7 @@ class UpdateManager:
             dest='download_segments',
             help='Number of segments for accelerated downloads.',
             type=int,
-            default=self.get_argparse_default_int('download_segments', 3)
+            default=self.config_default_int('download_segments', 3)
         )
 
         self.arguments = parser.parse_args()
@@ -377,13 +385,14 @@ class UpdateManager:
             logging.info(colorama.Fore.YELLOW + '[+] Checking for engine updates:')
 
             auto_update_setup = {**vars(self.arguments), 'force_download': False}
-            updater = Updater(
-                config_manager=self.config_manager,
-                updater_setup=auto_update_setup,
-                shutdown_event=self.shutdown_event,
-            )
             try:
-                updater.update(self.config_section_self_update)
+                updater = Updater(
+                    config_manager=self.config_manager,
+                    tool_name=self.config_section_self_update,
+                    updater_setup=auto_update_setup,
+                    shutdown_event=self.shutdown_event,
+                )
+                updater.run()
             except Exception as exception:
                 logging.error(exception)
 
@@ -408,13 +417,14 @@ class UpdateManager:
         def update_tool(name):
             if self.shutdown_event.is_set():
                 return
-            updater = Updater(
-                config_manager=self.config_manager,
-                updater_setup=updater_setup,
-                shutdown_event=self.shutdown_event,
-            )
             try:
-                updater.update(name)
+                updater = Updater(
+                    config_manager=self.config_manager,
+                    tool_name=name,
+                    updater_setup=updater_setup,
+                    shutdown_event=self.shutdown_event,
+                )
+                updater.run()
             except Exception as exception:
                 if not self.shutdown_event.is_set():
                     with lock:
