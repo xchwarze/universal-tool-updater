@@ -1,4 +1,6 @@
 import subprocess
+import shlex
+import pathlib
 import colorama
 import logging
 
@@ -29,6 +31,19 @@ class ScriptExecutor:
         self.tool_name = tool_name
         self.tool_config = tool_config
 
+    def _build_command(self, script):
+        """
+        Build a proper argv list from a configured script/command string.
+
+        :param script: Raw script or command string from tools.ini
+        :return: List of argv parts, prefixed for PowerShell execution if the script is a .ps1 file
+        """
+        parts = shlex.split(script, posix=False)
+        if parts and pathlib.Path(parts[0]).suffix.lower() == '.ps1':
+            return ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', *parts]
+
+        return parts
+
     def execute_script(self, script_type, script_params = None):
         """
         Execute a specific script for a given tool.
@@ -43,7 +58,7 @@ class ScriptExecutor:
             logging.info(colorama.Fore.BLUE + '------------------------------')
 
             try:
-                subprocess.run([script, *params], check=True)
+                subprocess.run([*self._build_command(script), *params], check=True)
             except subprocess.CalledProcessError as error:
                 logging.error(f'{self.tool_name}: {script_type} script exited with code {error.returncode}')
             except Exception as exception:
@@ -62,7 +77,7 @@ class ScriptExecutor:
             logging.info(f'{self.tool_name}: exec global script "{script}"')
 
             try:
-                subprocess.run([script, *script_params.values()], check=True)
+                subprocess.run([*self._build_command(script), *script_params.values()], check=True)
             except subprocess.CalledProcessError as error:
                 logging.error(f'{self.tool_name}: global script exited with code {error.returncode}')
             except Exception as exception:
