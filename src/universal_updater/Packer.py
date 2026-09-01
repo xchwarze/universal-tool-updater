@@ -4,6 +4,7 @@ import py7zr
 import pathlib
 import os
 import shutil
+import tempfile
 import colorama
 import logging
 
@@ -166,15 +167,25 @@ class Packer:
 
         logging.info(f'{self.tool_name}: merging with "{old_compress_name}"')
 
-        # unpack old version
-        old_tool_unpack_folder = pathlib.Path(old_compress_name).stem
-        old_tool_unpack_path = pathlib.Path(self.update_folder_path).joinpath(old_tool_unpack_folder)
-        self.unpack(old_tool_compress_path, old_tool_unpack_path)
+        # unpack old version into an isolated temp folder outside update_folder_path.
+        # tool_unpack_path can equal update_folder_path (when the archive has no single
+        # wrapping folder, see FileManager.processing_tool_path), so a path built under
+        # update_folder_path would end up nested inside tool_unpack_path and get wiped
+        # by the rmtree below before the final move.
+        old_tool_unpack_path = pathlib.Path(tempfile.mkdtemp(
+            prefix=f'{self.tool_name}_merge_',
+            dir=pathlib.Path(self.update_folder_path).parent,
+        ))
+        try:
+            self.unpack(old_tool_compress_path, old_tool_unpack_path)
 
-        # merge
-        shutil.copytree(tool_unpack_path, old_tool_unpack_path, copy_function=shutil.copy, dirs_exist_ok=True)
-        shutil.rmtree(tool_unpack_path)
-        shutil.move(old_tool_unpack_path, tool_unpack_path, copy_function=shutil.copy)
+            # merge
+            shutil.copytree(tool_unpack_path, old_tool_unpack_path, copy_function=shutil.copy, dirs_exist_ok=True)
+            shutil.rmtree(tool_unpack_path)
+            shutil.move(old_tool_unpack_path, tool_unpack_path, copy_function=shutil.copy)
+        finally:
+            if old_tool_unpack_path.exists():
+                shutil.rmtree(old_tool_unpack_path, ignore_errors=True)
 
     def repack_step(self, tool_folder_path, tool_unpack_path, unpack_folder_path, version):
         """
