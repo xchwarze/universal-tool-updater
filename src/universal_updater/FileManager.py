@@ -84,7 +84,7 @@ class FileManager:
         """
         logging.info(f'{self.tool_name}: saving to folder {tool_folder_path}')
 
-        use_merge = self.tool_config.get('merge', None)
+        use_merge = Helpers.config_flag(self.tool_config, 'merge')
         if self.disable_clean or use_merge:
             shutil.copytree(tool_unpack_path, tool_folder_path, copy_function=shutil.copy, dirs_exist_ok=True)
             return {
@@ -97,16 +97,16 @@ class FileManager:
         # so a failed copy never leaves tool_folder_path empty or half-written
         staging_path = tool_folder_path.with_name(f'.{tool_folder_path.name}.new')
         if staging_path.exists():
-            shutil.rmtree(staging_path)
+            Helpers.delete_folder(staging_path, ignore_errors=False)
         shutil.copytree(tool_unpack_path, staging_path, copy_function=shutil.copy)
 
         backup_path = tool_folder_path.with_name(f'.{tool_folder_path.name}.old')
         if backup_path.exists():
-            shutil.rmtree(backup_path)
+            Helpers.delete_folder(backup_path, ignore_errors=False)
         if tool_folder_path.exists():
             tool_folder_path.rename(backup_path)
         staging_path.rename(tool_folder_path)
-        shutil.rmtree(backup_path, ignore_errors=True)
+        Helpers.delete_folder(backup_path)
 
         return {
             'tool_name': self.tool_name,
