@@ -3,6 +3,7 @@ import pathlib
 import colorama
 import logging
 
+from universal_updater.HttpClient import HttpClient
 from universal_updater.Scraper import Scraper
 from universal_updater.Downloader import Downloader
 from universal_updater.Packer import Packer
@@ -18,11 +19,12 @@ class Updater:
     repacking the tool. It also handles pre-update and post-update scripts.
     """
 
-    def __init__(self, config_manager, updater_setup=None, shutdown_event=None):
+    def __init__(self, config_manager, tool_name, updater_setup=None, shutdown_event=None):
         """
-        Initialize the Updater class with various configurations.
+        Initialize the Updater and all its collaborators for this tool.
 
         :param config_manager: Configuration manager instance
+        :param tool_name: Name of the tool this Updater instance will process
         :param updater_setup: Dictionary containing various flags and settings for the updater.
             Possible keys are:
             - force_download: Flag to force download
@@ -32,45 +34,46 @@ class Updater:
             - disable_progress: Flag to disable progress bar
             - save_format_type: Format type for saving (default "full")
             - use_github_api: Flag to use GitHub API. The value is the token to use the api.
+        :param shutdown_event: threading.Event signaling a graceful-shutdown request, or None
+        :raises Exception: If tool_name has no matching section in tools.ini
         """
-        if updater_setup is None:
-            updater_setup = {}
+        updater_setup = updater_setup or {}
         self.shutdown_event = shutdown_event
-        self.tool_name = ""
-        self.tool_config = {}
-        self.script_path = os.getcwd()
-        self.updates_root = pathlib.Path(self.script_path) / 'updates'
-        self.update_folder_path = self.updates_root
-        self.request_user_agent = 'curl/7.84.0'
+        self.tool_name = tool_name
         self.config_manager = config_manager
+        self.tool_config = config_manager.get_tool_config(tool_name)
+        self.script_path = os.getcwd()
+        self.update_folder_path = pathlib.Path(self.script_path) / 'updates' / tool_name
         self.disable_install_check = updater_setup.get('disable_install_check', False)
         self.disable_repack = updater_setup.get('disable_repack', True)
         self.dry_run = updater_setup.get('dry_run', False)
-        self.scraper = Scraper(
-            force_download=updater_setup.get('force_download', False),
-            use_github_api=updater_setup.get('use_github_api', ''),
-            user_agent=self.request_user_agent,
+
+        http_client = HttpClient(
+            tool_name=tool_name,
+            user_agent='curl/7.84.0',
             request_timeout=updater_setup.get('request_timeout', 30),
             request_retries=updater_setup.get('download_retries', 3),
         )
+        self.scraper = Scraper(
+            tool_name, self.tool_config, http_client,
+            force_download=updater_setup.get('force_download', False),
+            use_github_api=updater_setup.get('use_github_api', ''),
+        )
         self.downloader = Downloader(
+            tool_name, self.tool_config, http_client, self.update_folder_path,
             disable_progress=updater_setup.get('disable_progress', False),
-            user_agent=self.request_user_agent,
-            update_folder_path=self.update_folder_path,
-            download_retries=updater_setup.get('download_retries', 3),
             download_segments=updater_setup.get('download_segments', 3),
-            request_timeout=updater_setup.get('request_timeout', 30),
         )
         self.packer = Packer(
+            tool_name, self.tool_config, self.update_folder_path,
             save_format_type=updater_setup.get('save_format_type', 'full'),
             disable_clean=updater_setup.get('disable_clean', True),
-            update_folder_path=self.update_folder_path,
         )
         self.file_manager = FileManager(
+            tool_name, self.tool_config, self.script_path,
             disable_clean=updater_setup.get('disable_clean', True),
-            script_path=self.script_path,
         )
-        self.script_executor = ScriptExecutor(config_manager=self.config_manager)
+        self.script_executor = ScriptExecutor(tool_name, self.tool_config, config_manager=config_manager)
 
     def check_tool_installed(self):
         """
@@ -111,7 +114,7 @@ class Updater:
             self.update_folder_path.mkdir(parents=True)
 
         check_content_type = not Helpers.config_flag(self.tool_config, 'disable_content_type_check')
-        return self.downloader.download_from_web(self.tool_name, download_url, check_content_type, cookies)
+        return self.downloader.download_from_web(download_url, check_content_type, cookies)
 
     def processing_tool_step(self, file_path, download_version):
         """
@@ -174,25 +177,13 @@ class Updater:
         """Check if a shutdown has been requested."""
         return self.shutdown_event is not None and self.shutdown_event.is_set()
 
-    def update(self, tool_name):
+    def run(self):
         """
-        Perform the update process for a given tool.
+        Perform the update process for this tool.
 
-        :param tool_name: Name of the tool to update
         :return: bool: True if the update completes successfully, False if no update is needed.
         :raises Exception: If any step in the update process fails.
         """
-        # tool data setup
-        self.tool_name = tool_name
-        self.tool_config = self.config_manager.get_tool_config(tool_name)
-        self.update_folder_path = self.updates_root / tool_name
-        self.downloader.update_folder_path = self.update_folder_path
-        self.packer.update_folder_path = self.update_folder_path
-        self.scraper.tool_setup(self.tool_name, self.tool_config)
-        self.packer.tool_setup(self.tool_name, self.tool_config)
-        self.file_manager.tool_setup(self.tool_name, self.tool_config)
-        self.script_executor.tool_setup(self.tool_name, self.tool_config)
-
         # execute checks and scripts
         self.pre_update()
 
