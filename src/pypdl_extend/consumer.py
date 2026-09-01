@@ -8,7 +8,7 @@ import asyncio
 from aiohttp import ClientResponseError
 from pypdl.consumer import Consumer
 
-from .fatal_state import fatal_task_ids, force_single_segment_task_ids
+from .fatal_state import get_session_state
 
 # Errors that should trigger a single-segment retry (server doesn't honor byte ranges)
 _SINGLE_SEGMENT_FALLBACK_ERRORS = (
@@ -21,6 +21,12 @@ _FATAL_STATUS_CODES = (400, 401, 403, 404, 410)
 
 
 async def _patched_process_tasks(self, in_queue, out_queue):
+    # Each Pypdl() session has its own queue pair; the consumer's out_queue is the
+    # same object as the producer's in_queue for this session, so id() of it is a
+    # reliable per-session key (see fatal_state.py).
+    session_key = id(out_queue)
+    state = get_session_state(session_key)
+
     while True:
         task = await in_queue.get()
         if task is None:
@@ -34,7 +40,7 @@ async def _patched_process_tasks(self, in_queue, out_queue):
             if http_error.status in _FATAL_STATUS_CODES:
                 # Fatal HTTP error — mark task ID as fatal so producer won't retry it
                 self._logger.warning("Fatal HTTP %s for %s, skipping retries", http_error.status, task[0])
-                fatal_task_ids.add(task[0])
+                state['fatal_task_ids'].add(task[0])
             else:
                 # Transient HTTP error (e.g. 503, 429) — allow retry
                 self._logger.warning("Transient HTTP %s, will retry", http_error.status)
@@ -45,7 +51,7 @@ async def _patched_process_tasks(self, in_queue, out_queue):
             if any(msg in str(download_error) for msg in _SINGLE_SEGMENT_FALLBACK_ERRORS):
                 # Server doesn't respect byte ranges — retry the task as single-segment
                 self._logger.warning("Segment error, retrying as single-segment: %s", download_error)
-                force_single_segment_task_ids.add(task[0])
+                state['force_single_segment_task_ids'].add(task[0])
             else:
                 # Unknown error — allow retry as original behavior
                 self._logger.warning("Unknown error, will retry: %s", download_error)

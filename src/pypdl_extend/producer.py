@@ -6,13 +6,19 @@
 
 from pypdl.producer import Producer
 
-from .fatal_state import fatal_task_ids, force_single_segment_task_ids
+from .fatal_state import discard_session_state, get_session_state
 
 # Save reference to the original method so we can delegate non-special cases to it
 _original_enqueue_tasks = Producer.enqueue_tasks
 
 
 async def _patched_enqueue_tasks(self, in_queue, out_queue):
+    # Each Pypdl() session has its own queue pair; the producer's in_queue is the
+    # same object as the consumer's out_queue for this session, so id() of it is a
+    # reliable per-session key (see fatal_state.py).
+    session_key = id(in_queue)
+    state = get_session_state(session_key)
+
     # Wrap in_queue.get to intercept flagged task IDs before normal retry logic
     original_get = in_queue.get
 
@@ -24,12 +30,12 @@ async def _patched_enqueue_tasks(self, in_queue, out_queue):
 
             remaining_ids = []
             for task_id in batch:
-                if task_id in fatal_task_ids:
+                if task_id in state['fatal_task_ids']:
                     # Fatal — mark as failed without retrying
                     task = self._tasks[task_id]
                     self.add_failed(task.url, task.callback)
-                    fatal_task_ids.discard(task_id)
-                elif task_id in force_single_segment_task_ids:
+                    state['fatal_task_ids'].discard(task_id)
+                elif task_id in state['force_single_segment_task_ids']:
                     # Reconfigure task to single-segment mode and grant one more attempt
                     task = self._tasks[task_id]
                     task.multisegment = False
@@ -37,7 +43,7 @@ async def _patched_enqueue_tasks(self, in_queue, out_queue):
                     # Bump tries so this task gets re-dispatched (it was decremented to 0
                     # during the failed multi-segment attempt)
                     task.tries = max(task.tries, 1)
-                    force_single_segment_task_ids.discard(task_id)
+                    state['force_single_segment_task_ids'].discard(task_id)
                     remaining_ids.append(task_id)
                 else:
                     # Normal task — let the original logic handle it
@@ -53,6 +59,10 @@ async def _patched_enqueue_tasks(self, in_queue, out_queue):
     finally:
         # Restore original get to avoid side effects if Pypdl is reused
         in_queue.get = original_get
+        # enqueue_tasks runs for the whole session lifetime, so its exit is the
+        # natural point to drop this session's state and avoid an unbounded
+        # leak of session dicts across a long-running process.
+        discard_session_state(session_key)
 
 
 def apply():
