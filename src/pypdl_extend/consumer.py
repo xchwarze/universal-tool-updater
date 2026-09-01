@@ -21,11 +21,9 @@ _FATAL_STATUS_CODES = (400, 401, 403, 404, 410)
 
 
 async def _patched_process_tasks(self, in_queue, out_queue):
-    # Each Pypdl() session has its own queue pair; the consumer's out_queue is the
-    # same object as the producer's in_queue for this session, so id() of it is a
-    # reliable per-session key (see fatal_state.py).
-    session_key = id(out_queue)
-    state = get_session_state(session_key)
+    # out_queue is the same object as the producer's in_queue for this session
+    # (see fatal_state.py), so the state lives on it.
+    state = get_session_state(out_queue)
 
     while True:
         task = await in_queue.get()

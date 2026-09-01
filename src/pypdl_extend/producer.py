@@ -6,18 +6,16 @@
 
 from pypdl.producer import Producer
 
-from .fatal_state import discard_session_state, get_session_state
+from .fatal_state import get_session_state
 
 # Save reference to the original method so we can delegate non-special cases to it
 _original_enqueue_tasks = Producer.enqueue_tasks
 
 
 async def _patched_enqueue_tasks(self, in_queue, out_queue):
-    # Each Pypdl() session has its own queue pair; the producer's in_queue is the
-    # same object as the consumer's out_queue for this session, so id() of it is a
-    # reliable per-session key (see fatal_state.py).
-    session_key = id(in_queue)
-    state = get_session_state(session_key)
+    # in_queue is the same object as the consumer's out_queue for this session
+    # (see fatal_state.py), so the state lives on it.
+    state = get_session_state(in_queue)
 
     # Wrap in_queue.get to intercept flagged task IDs before normal retry logic
     original_get = in_queue.get
@@ -59,10 +57,6 @@ async def _patched_enqueue_tasks(self, in_queue, out_queue):
     finally:
         # Restore original get to avoid side effects if Pypdl is reused
         in_queue.get = original_get
-        # enqueue_tasks runs for the whole session lifetime, so its exit is the
-        # natural point to drop this session's state and avoid an unbounded
-        # leak of session dicts across a long-running process.
-        discard_session_state(session_key)
 
 
 def apply():
