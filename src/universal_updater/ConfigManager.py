@@ -76,15 +76,19 @@ class ConfigManager:
 
     def get_boolean(self, section, option, fallback=None):
         """
-        Get a boolean configuration value.
+        Get a boolean configuration value. An unrecognized value (e.g. a typo
+        like "maybe") falls back instead of raising, same as a missing key.
 
         :param section: Section in the config file
         :param option: Option in the section
-        :param fallback: Fallback value if option is not found
+        :param fallback: Fallback value if option is not found or invalid
         :return: Boolean value of the configuration option
         """
         with self._lock:
-            return self.config.getboolean(section, option, fallback=fallback)
+            try:
+                return self.config.getboolean(section, option, fallback=fallback)
+            except ValueError:
+                return fallback
 
     def get_sections(self):
         """
