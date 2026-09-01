@@ -490,6 +490,30 @@ class Scraper:
             result = self.scrape_web()
 
         if result:
-            result['cookies'] = dict(self.session.cookies)
+            result['cookies'] = self._collect_cookies_for(result.get('download_url', ''))
 
         return result
+
+    def _collect_cookies_for(self, url):
+        """
+        Build a plain cookie dict scoped to the given URL's host, so a later
+        request to the download URL only receives cookies that actually belong
+        to it — avoids both CookieConflictError (duplicate names across domains
+        in self.session.cookies) and leaking unrelated-domain session cookies
+        to the download host.
+
+        :param url: The URL the cookies will be sent to
+        :return: Dictionary of cookie name/value pairs scoped to the URL's host
+        """
+        if not url:
+            return {}
+
+        target_host = urllib.parse.urlparse(url).hostname or ''
+        cookies = {}
+        for cookie in self.session.cookies:
+            cookie_domain = (cookie.domain or '').lstrip('.')
+            if cookie_domain and target_host != cookie_domain and not target_host.endswith('.' + cookie_domain):
+                continue
+            cookies[cookie.name] = cookie.value
+
+        return cookies
