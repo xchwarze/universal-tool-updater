@@ -5,7 +5,6 @@ import logging
 class ColoredFormatter(logging.Formatter):
     COLORS = {
         'DEBUG': colorama.Fore.CYAN,
-        # 'INFO': colorama.Fore.GREEN,
         'WARNING': colorama.Fore.YELLOW,
         'ERROR': colorama.Fore.RED,
         'CRITICAL': colorama.Fore.RED + colorama.Back.YELLOW,
