@@ -15,7 +15,7 @@ class ConfigManager:
 
         :param config_file_name: Name of the configuration file
         """
-        self.config = configparser.ConfigParser()
+        self.config = configparser.ConfigParser(interpolation=None)
         self.config_file_name = config_file_name
         self._lock = threading.Lock()
         self.config.read(self.config_file_name)
