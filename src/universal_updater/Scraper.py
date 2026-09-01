@@ -277,12 +277,9 @@ class Scraper:
         if not version:
             raise Exception(colorama.Fore.RED + f'{self.tool_name}: no version found in scoop manifest')
 
-        local_version = self.tool_config.get('local_version', '0')
-        if not self.force_download and local_version == version:
-            logging.info(f'{self.tool_name}: {local_version} is the latest version')
+        version = self._compare_version(version)
+        if version is None:
             return False
-
-        logging.info(f'{self.tool_name}: updated from {local_version} --> {version}')
 
         arch_key = '32bit' if (force_x86 or self.arch_suffix == '_x86') else '64bit'
         arch_url = manifest.get('architecture', {}).get(arch_key, {}).get('url')
@@ -302,50 +299,15 @@ class Scraper:
     #################
     # Check methods
     #################
-    def check_version_from_web(self, html, re_version):
+    def _compare_version(self, remote_version):
         """
-        Check version from web HTML content.
+        Compare remote_version against the tool's local_version and log the
+        outcome.
 
-        :param html: HTML content
-        :param re_version: Regex pattern for version
-        :return: Version string
-        """
-        local_version = self.tool_config.get('local_version', '0')
-        html_regex_version = re.findall(re_version, html)
-
-        if not html_regex_version:
-            raise Exception(colorama.Fore.RED + f'{self.tool_name}: re_version regex not match ({re_version})')
-
-        if not self.force_download and local_version == html_regex_version[0]:
-            logging.info(f'{self.tool_name}: {local_version} is the latest version')
-            return None
-
-        logging.info(f'{self.tool_name}: updated from {local_version} --> {html_regex_version[0]}')
-
-        return html_regex_version[0]
-
-    def check_version_from_http(self, headers):
-        """
-        Check version from HTTP headers.
-
-        :param headers: HTTP headers
-        :return: Version string (SHA-1 based)
+        :param remote_version: The version extracted from the remote source
+        :return: None if already up to date (unless force_download), otherwise remote_version unchanged
         """
         local_version = self.tool_config.get('local_version', '0')
-
-        remote_version = None
-        if 'last-modified' in headers:
-            logging.debug(f'{self.tool_name}: using "last-modified" as version number')
-            input_bytes = headers['last-modified'].encode()
-            remote_version = hashlib.sha1(input_bytes).hexdigest()
-        elif 'content-length' in headers:
-            logging.debug(f'{self.tool_name}: using "content-length" as version number')
-            input_bytes = headers['content-length'].encode()
-            remote_version = hashlib.sha1(input_bytes).hexdigest()
-        else:
-            raise Exception(colorama.Fore.RED +
-                            f'{self.tool_name}: no header is found with which to determine if there is an update')
-
         if not self.force_download and local_version == remote_version:
             logging.info(f'{self.tool_name}: {local_version} is the latest version')
             return None
@@ -354,6 +316,36 @@ class Scraper:
 
         return remote_version
 
+    def check_version_from_web(self, html, re_version):
+        """
+        Check version from web HTML content.
+
+        :param html: HTML content
+        :param re_version: Regex pattern for version
+        :return: Version string
+        """
+        html_regex_version = re.findall(re_version, html)
+
+        if not html_regex_version:
+            raise Exception(colorama.Fore.RED + f'{self.tool_name}: re_version regex not match ({re_version})')
+
+        return self._compare_version(html_regex_version[0])
+
+    def check_version_from_http(self, headers):
+        """
+        Check version from HTTP headers.
+
+        :param headers: HTTP headers
+        :return: Version string (SHA-1 based)
+        """
+        for header in ('last-modified', 'content-length'):
+            if header in headers:
+                logging.debug(f'{self.tool_name}: using "{header}" as version number')
+                return self._compare_version(hashlib.sha1(headers[header].encode()).hexdigest())
+
+        raise Exception(colorama.Fore.RED +
+                        f'{self.tool_name}: no header is found with which to determine if there is an update')
+
     def check_version_from_github_api(self, json):
         """
         Check version from GitHub API JSON response.
@@ -361,18 +353,11 @@ class Scraper:
         :param json: JSON response from GitHub API
         :return: Version string
         """
-        local_version = self.tool_config.get('local_version', '0')
         tag_name = json.get('tag_name')
         if not tag_name:
             raise Exception(colorama.Fore.RED + f'{self.tool_name}: "tag_name" not found in GitHub API response')
 
-        if not self.force_download and local_version == tag_name:
-            logging.info(f'{self.tool_name}: {local_version} is the latest version')
-            return None
-
-        logging.info(f'{self.tool_name}: updated from {local_version} --> {tag_name}')
-
-        return tag_name
+        return self._compare_version(tag_name)
 
     #################
     # Download url methods
