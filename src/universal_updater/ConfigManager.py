@@ -1,4 +1,7 @@
 import configparser
+import os
+import pathlib
+import tempfile
 import threading
 import colorama
 
@@ -18,7 +21,7 @@ class ConfigManager:
         self.config = configparser.ConfigParser(interpolation=None)
         self.config_file_name = config_file_name
         self._lock = threading.Lock()
-        self.config.read(self.config_file_name)
+        self.config.read(self.config_file_name, encoding='utf-8')
 
     def get_config(self, section, key, fallback=None):
         """
@@ -100,6 +103,19 @@ class ConfigManager:
     def _write_config(self):
         """
         Write the current configuration to file (caller must hold the lock).
+        Writes to a temp file first and atomically replaces the target, so a
+        crash or encoding error mid-write never corrupts the existing file.
         """
-        with open(self.config_file_name, 'w') as config_file:
-            self.config.write(config_file)
+        config_path = pathlib.Path(self.config_file_name)
+        fd, tmp_path = tempfile.mkstemp(
+            dir=str(config_path.parent) if str(config_path.parent) else '.',
+            prefix=f'.{config_path.name}.',
+            suffix='.tmp',
+        )
+        try:
+            with os.fdopen(fd, 'w', encoding='utf-8') as tmp_file:
+                self.config.write(tmp_file)
+            os.replace(tmp_path, self.config_file_name)
+        except Exception:
+            pathlib.Path(tmp_path).unlink(missing_ok=True)
+            raise
